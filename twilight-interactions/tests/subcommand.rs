@@ -1,8 +1,9 @@
 use twilight_interactions::command::{
-    ApplicationCommandData, CommandInputData, CommandModel, CreateCommand,
+    ApplicationCommandData, CommandInputData, CommandModel, CommandOptionExt,
+    CommandOptionExtInner, CreateCommand, OptionsCommandOptionDataExt,
 };
 use twilight_model::application::{
-    command::{ChoiceCommandOptionData, CommandOption, OptionsCommandOptionData},
+    command::ChoiceCommandOptionData,
     interaction::application_command::{CommandDataOption, CommandOptionValue},
 };
 
@@ -111,43 +112,59 @@ fn test_subcommand_group_model() {
 
 #[test]
 fn test_create_subcommand() {
-    let command_options = vec![CommandOption::String(ChoiceCommandOptionData {
-        autocomplete: false,
-        choices: vec![],
-        description: "An option".into(),
-        name: "option".into(),
-        required: true,
-    })];
+    let command_options = vec![CommandOptionExt {
+        inner: CommandOptionExtInner::String(ChoiceCommandOptionData {
+            autocomplete: false,
+            choices: vec![],
+            description: "An option".into(),
+            name: "option".into(),
+            required: true,
+        }),
+        help: None,
+    }];
 
     let subcommand_group = vec![
-        CommandOption::SubCommand(OptionsCommandOptionData {
-            description: "Command two".into(),
-            name: "two".into(),
-            options: command_options.clone(),
-        }),
-        CommandOption::SubCommand(OptionsCommandOptionData {
-            description: "Command three".into(),
-            name: "three".into(),
-            options: command_options.clone(),
-        }),
+        CommandOptionExt {
+            inner: CommandOptionExtInner::SubCommand(OptionsCommandOptionDataExt {
+                description: "Command two".into(),
+                name: "two".into(),
+                options: command_options.clone(),
+            }),
+            help: None,
+        },
+        CommandOptionExt {
+            inner: CommandOptionExtInner::SubCommand(OptionsCommandOptionDataExt {
+                description: "Command three".into(),
+                name: "three".into(),
+                options: command_options.clone(),
+            }),
+            help: None,
+        },
     ];
 
     let subcommand = vec![
-        CommandOption::SubCommand(OptionsCommandOptionData {
-            description: "Command one".into(),
-            name: "one".into(),
-            options: command_options,
-        }),
-        CommandOption::SubCommandGroup(OptionsCommandOptionData {
-            description: "Command group".into(),
-            name: "group".into(),
-            options: subcommand_group,
-        }),
+        CommandOptionExt {
+            inner: CommandOptionExtInner::SubCommand(OptionsCommandOptionDataExt {
+                description: "Command one".into(),
+                name: "one".into(),
+                options: command_options,
+            }),
+            help: None,
+        },
+        CommandOptionExt {
+            inner: CommandOptionExtInner::SubCommandGroup(OptionsCommandOptionDataExt {
+                description: "Command group".into(),
+                name: "group".into(),
+                options: subcommand_group,
+            }),
+            help: None,
+        },
     ];
 
     let expected = ApplicationCommandData {
         name: "command".into(),
         description: "Command".into(),
+        help: None,
         options: subcommand,
         default_permission: true,
         group: true,

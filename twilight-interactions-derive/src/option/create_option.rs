@@ -28,7 +28,7 @@ pub fn impl_create_option(input: DeriveInput) -> Result<TokenStream> {
         impl ::twilight_interactions::command::CreateOption for #ident {
             fn create_option(
                 data: ::twilight_interactions::command::internal::CreateOptionData,
-            ) -> ::twilight_model::application::command::CommandOption {
+            ) -> ::twilight_interactions::command::CommandOptionExt {
                 let mut choices = ::std::vec::Vec::with_capacity(#vec_capacity);
 
                 #(#choice_variants)*
@@ -48,7 +48,7 @@ pub fn dummy_create_option(ident: Ident, error: Error) -> TokenStream {
         impl ::twilight_interactions::command::CreateOption for #ident {
             fn create_option(
                 data: ::twilight_interactions::command::internal::CreateOptionData,
-            ) -> ::twilight_model::application::command::CommandOption {
+            ) -> ::twilight_interactions::command::CommandOptionExt {
                 ::std::unimplemented!()
             }
         }
@@ -79,11 +79,27 @@ fn choice_variant(variant: &ParsedVariant) -> TokenStream {
 
 /// Generate command option
 fn command_option(kind: ChoiceKind) -> TokenStream {
-    let path = match kind {
-        ChoiceKind::String => quote!(String(data.into_choice(choices))),
-        ChoiceKind::Integer => quote!(Integer(data.into_number(choices))),
-        ChoiceKind::Number => quote!(Number(data.into_number(choices))),
+    let (path, kind) = match kind {
+        ChoiceKind::String => (
+            quote!(String),
+            quote! { let (opt, help) = data.into_choice(choices); },
+        ),
+        ChoiceKind::Integer => (
+            quote!(Integer),
+            quote! { let (opt, help) = data.into_number(choices); },
+        ),
+        ChoiceKind::Number => (
+            quote!(Number),
+            quote! { let (opt, help) = data.into_number(choices); },
+        ),
     };
 
-    quote!(::twilight_model::application::command::CommandOption::#path)
+    quote! {
+        #kind
+
+        ::twilight_interactions::command::CommandOptionExt {
+            inner: ::twilight_interactions::command::CommandOptionExtInner::#path(opt),
+            help,
+        }
+    }
 }

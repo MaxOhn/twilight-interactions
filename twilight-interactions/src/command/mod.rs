@@ -62,7 +62,10 @@ mod create_command;
 pub mod internal;
 
 pub use command_model::{CommandInputData, CommandModel, CommandOption, ResolvedUser};
-pub use create_command::{ApplicationCommandData, CreateCommand, CreateOption};
+pub use create_command::{
+    ApplicationCommandData, CommandOptionExt, CommandOptionExtInner, CreateCommand, CreateOption,
+    OptionsCommandOptionDataExt,
+};
 
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]

@@ -237,3 +237,14 @@ pub fn parse_desc(val: &AttrValue) -> Result<String> {
         )),
     }
 }
+
+pub fn parse_help(val: &AttrValue) -> Result<String> {
+    let span = val.span();
+    let val = val.parse_string()?;
+
+    if val.is_empty() {
+        Err(Error::new(span, "Help must not be empty"))
+    } else {
+        Ok(val)
+    }
+}

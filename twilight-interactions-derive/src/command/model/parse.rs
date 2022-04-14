@@ -4,7 +4,9 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{spanned::Spanned, Attribute, Error, Lit, Result, Type};
 
-use crate::parse::{extract_option, find_attr, parse_desc, parse_name, AttrValue, NamedAttrs};
+use crate::parse::{
+    extract_option, find_attr, parse_desc, parse_help, parse_name, AttrValue, NamedAttrs,
+};
 
 /// Parsed struct field
 pub struct StructField {
@@ -66,6 +68,8 @@ pub struct TypeAttribute {
     pub name: Option<String>,
     /// Overwrite the field description
     pub desc: Option<String>,
+    /// Optional help
+    pub help: Option<String>,
     /// Whether the command should be enabled by default.
     pub default_permission: bool,
 }
@@ -74,10 +78,11 @@ impl TypeAttribute {
     /// Parse a single [`Attribute`]
     pub fn parse(attr: &Attribute) -> Result<Self> {
         let meta = attr.parse_meta()?;
-        let attrs = NamedAttrs::parse(meta, &["name", "desc", "default_permission"])?;
+        let attrs = NamedAttrs::parse(meta, &["name", "desc", "default_permission", "help"])?;
 
         let name = attrs.get("name").map(parse_name).transpose()?;
         let desc = attrs.get("desc").map(parse_desc).transpose()?;
+        let help = attrs.get("help").map(parse_help).transpose()?;
         let default_permission = attrs
             .get("default_permission")
             .map(|v| v.parse_bool())
@@ -87,6 +92,7 @@ impl TypeAttribute {
         Ok(Self {
             name,
             desc,
+            help,
             default_permission,
         })
     }
@@ -99,6 +105,8 @@ pub struct FieldAttribute {
     pub rename: Option<String>,
     /// Overwrite the field description
     pub desc: Option<String>,
+    /// Optional help
+    pub help: Option<String>,
     /// Whether the field supports autocomplete
     pub autocomplete: bool,
     /// Limit to specific channel types
@@ -118,6 +126,7 @@ impl FieldAttribute {
             &[
                 "rename",
                 "desc",
+                "help",
                 "autocomplete",
                 "channel_types",
                 "max_value",
@@ -127,6 +136,7 @@ impl FieldAttribute {
 
         let rename = attrs.get("rename").map(parse_name).transpose()?;
         let desc = attrs.get("desc").map(parse_desc).transpose()?;
+        let help = attrs.get("help").map(parse_help).transpose()?;
         let autocomplete = attrs
             .get("autocomplete")
             .map(|val| val.parse_bool())
@@ -149,6 +159,7 @@ impl FieldAttribute {
         Ok(Self {
             rename,
             desc,
+            help,
             autocomplete,
             channel_types,
             max_value,

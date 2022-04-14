@@ -84,7 +84,7 @@ impl VariantAttribute {
     /// If no [`ChoiceKind`] is provided, the type is inferred from value.
     pub fn parse(attr: &Attribute, kind: Option<ChoiceKind>) -> Result<Self> {
         let meta = attr.parse_meta()?;
-        let attrs = NamedAttrs::parse(meta, &["name", "value"])?;
+        let attrs = NamedAttrs::parse(meta, &["name", "value", "help"])?;
 
         let name = match attrs.get("name") {
             Some(val) => parse_name(val)?,

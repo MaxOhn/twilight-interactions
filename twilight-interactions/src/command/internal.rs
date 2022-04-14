@@ -24,6 +24,8 @@ pub struct CreateOptionData {
     pub name: String,
     /// Description of the option. It must be 100 characters or less.
     pub description: String,
+    /// Optional help. Must not be empty.
+    pub help: Option<String>,
     /// Whether the option is required to be completed by a user.
     pub required: bool,
     /// Whether the command supports autocomplete. Only for `STRING`, `INTEGER` and `NUMBER` option type.
@@ -51,45 +53,63 @@ pub struct CommandOptionData {
 
 impl CreateOptionData {
     /// Conversion into a [`BaseCommandOptionData`]
-    pub fn into_data(self) -> BaseCommandOptionData {
-        BaseCommandOptionData {
-            description: self.description,
-            name: self.name,
-            required: self.required,
-        }
+    pub fn into_data(self) -> (BaseCommandOptionData, Option<String>) {
+        (
+            BaseCommandOptionData {
+                description: self.description,
+                name: self.name,
+                required: self.required,
+            },
+            self.help,
+        )
     }
 
     /// Conversion into a [`ChannelCommandOptionData`]
-    pub fn into_channel(self) -> ChannelCommandOptionData {
-        ChannelCommandOptionData {
-            channel_types: self.data.channel_types,
-            description: self.description,
-            name: self.name,
-            required: self.required,
-        }
+    pub fn into_channel(self) -> (ChannelCommandOptionData, Option<String>) {
+        (
+            ChannelCommandOptionData {
+                channel_types: self.data.channel_types,
+                description: self.description,
+                name: self.name,
+                required: self.required,
+            },
+            self.help,
+        )
     }
 
     /// Conversion into a [`ChoiceCommandOptionData`]
-    pub fn into_choice(self, choices: Vec<CommandOptionChoice>) -> ChoiceCommandOptionData {
-        ChoiceCommandOptionData {
-            autocomplete: self.autocomplete,
-            choices,
-            description: self.description,
-            name: self.name,
-            required: self.required,
-        }
+    pub fn into_choice(
+        self,
+        choices: Vec<CommandOptionChoice>,
+    ) -> (ChoiceCommandOptionData, Option<String>) {
+        (
+            ChoiceCommandOptionData {
+                autocomplete: self.autocomplete,
+                choices,
+                description: self.description,
+                name: self.name,
+                required: self.required,
+            },
+            self.help,
+        )
     }
 
     /// Conversion into a [`NumberCommandOptionData`]
-    pub fn into_number(self, choices: Vec<CommandOptionChoice>) -> NumberCommandOptionData {
-        NumberCommandOptionData {
-            autocomplete: self.autocomplete,
-            choices,
-            description: self.description,
-            max_value: self.data.max_value,
-            min_value: self.data.min_value,
-            name: self.name,
-            required: self.required,
-        }
+    pub fn into_number(
+        self,
+        choices: Vec<CommandOptionChoice>,
+    ) -> (NumberCommandOptionData, Option<String>) {
+        (
+            NumberCommandOptionData {
+                autocomplete: self.autocomplete,
+                choices,
+                description: self.description,
+                max_value: self.data.max_value,
+                min_value: self.data.min_value,
+                name: self.name,
+                required: self.required,
+            },
+            self.help,
+        )
     }
 }

@@ -9,6 +9,7 @@ use super::parse::{channel_type, command_option_value, StructField, TypeAttribut
 /// Implementation of CreateCommand derive macro
 pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> Result<TokenStream> {
     let ident = &input.ident;
+    let generics = &input.generics;
     let span = input.span();
     let fields = match fields {
         Some(fields) => StructField::from_fields(fields)?,
@@ -36,6 +37,12 @@ pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> R
         Some(desc) => desc.clone(),
         None => parse_doc(&input.attrs, span)?,
     };
+
+    let help = match attributes.help {
+        Some(help) => quote! { Some(#help.to_owned()) },
+        None => quote! { None },
+    };
+
     let default_permission = attributes.default_permission;
 
     let field_options = fields
@@ -44,7 +51,7 @@ pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> R
         .collect::<Result<Vec<_>>>()?;
 
     Ok(quote! {
-        impl ::twilight_interactions::command::CreateCommand for #ident {
+        impl #generics ::twilight_interactions::command::CreateCommand for #ident #generics {
             const NAME: &'static str = #name;
 
             fn create_command() -> ::twilight_interactions::command::ApplicationCommandData {
@@ -55,6 +62,7 @@ pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> R
                 ::twilight_interactions::command::ApplicationCommandData {
                     name: ::std::convert::From::from(#name),
                     description: ::std::convert::From::from(#description),
+                    help: #help,
                     options: command_options,
                     default_permission: #default_permission,
                     group: false,
@@ -74,6 +82,12 @@ fn field_option(field: &StructField) -> Result<TokenStream> {
         Some(desc) => desc.clone(),
         None => parse_doc(&field.raw_attrs, field.span)?,
     };
+
+    let help = match &field.attributes.help {
+        Some(help) => quote! { Some(#help.to_owned()) },
+        None => quote! { None },
+    };
+
     let required = field.kind.required();
     let autocomplete = field.attributes.autocomplete;
     let channel_types = field.attributes.channel_types.iter().map(channel_type);
@@ -85,6 +99,7 @@ fn field_option(field: &StructField) -> Result<TokenStream> {
             ::twilight_interactions::command::internal::CreateOptionData {
                 name: ::std::convert::From::from(#name),
                 description: ::std::convert::From::from(#description),
+                help: #help,
                 required: #required,
                 autocomplete: #autocomplete,
                 data: ::twilight_interactions::command::internal::CommandOptionData {

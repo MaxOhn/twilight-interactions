@@ -12,6 +12,7 @@ pub fn impl_create_command(
     variants: impl IntoIterator<Item = Variant>,
 ) -> Result<TokenStream> {
     let ident = &input.ident;
+    let generics = &input.generics;
     let span = input.span();
 
     let variants = ParsedVariant::from_variants(variants, input.span())?;
@@ -33,10 +34,15 @@ pub fn impl_create_command(
         None => parse_doc(&input.attrs, span)?,
     };
 
+    let help = match attribute.help {
+        Some(help) => quote! { Some(#help.to_owned()) },
+        None => quote! { None },
+    };
+
     let variant_options = variants.iter().map(variant_option);
 
     Ok(quote! {
-        impl ::twilight_interactions::command::CreateCommand for #ident {
+        impl #generics ::twilight_interactions::command::CreateCommand for #ident #generics {
             const NAME: &'static str = #name;
 
             fn create_command() -> ::twilight_interactions::command::ApplicationCommandData {
@@ -47,6 +53,7 @@ pub fn impl_create_command(
                 ::twilight_interactions::command::ApplicationCommandData {
                     name: ::std::convert::From::from(#name),
                     description: ::std::convert::From::from(#description),
+                    help: #help,
                     options: command_options,
                     default_permission: #default_permission,
                     group: true,

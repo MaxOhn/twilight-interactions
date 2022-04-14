@@ -1,6 +1,11 @@
+use std::borrow::Cow;
+
 use twilight_model::{
     application::{
-        command::{Command, CommandOption, CommandType, Number, OptionsCommandOptionData},
+        command::{
+            BaseCommandOptionData, ChannelCommandOptionData, ChoiceCommandOptionData, Command,
+            CommandOption, CommandType, Number, NumberCommandOptionData, OptionsCommandOptionData,
+        },
         interaction::application_command::InteractionChannel,
     },
     channel::Attachment,
@@ -120,7 +125,96 @@ pub trait CreateCommand: Sized {
 
 pub trait CreateOption: Sized {
     /// Create a [`CommandOption`] from this type.
-    fn create_option(data: CreateOptionData) -> CommandOption;
+    fn create_option(data: CreateOptionData) -> CommandOptionExt;
+}
+
+/// Wrapper for [`CommandOption`](twilight_model::application::command::CommandOption)
+/// to allow more fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandOptionExt {
+    /// The actual [`CommandOption`](twilight_model::application::command::CommandOption).
+    pub inner: CommandOptionExtInner,
+    /// Additional optional help.
+    pub help: Option<String>,
+}
+
+/// Inner option for [`CommandOptionExt`] to distinguish
+/// between [`CommandOption`]'s variants for subcommands(groups).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandOptionExtInner {
+    SubCommand(OptionsCommandOptionDataExt),
+    SubCommandGroup(OptionsCommandOptionDataExt),
+    String(ChoiceCommandOptionData),
+    Integer(NumberCommandOptionData),
+    Boolean(BaseCommandOptionData),
+    User(BaseCommandOptionData),
+    Channel(ChannelCommandOptionData),
+    Role(BaseCommandOptionData),
+    Mentionable(BaseCommandOptionData),
+    Number(NumberCommandOptionData),
+    Attachment(BaseCommandOptionData),
+}
+
+impl CommandOptionExtInner {
+    pub fn name(&self) -> &str {
+        match self {
+            CommandOptionExtInner::SubCommand(d) => d.name.as_str(),
+            CommandOptionExtInner::SubCommandGroup(d) => d.name.as_str(),
+            CommandOptionExtInner::String(d) => d.name.as_str(),
+            CommandOptionExtInner::Integer(d) => d.name.as_str(),
+            CommandOptionExtInner::Boolean(d) => d.name.as_str(),
+            CommandOptionExtInner::User(d) => d.name.as_str(),
+            CommandOptionExtInner::Channel(d) => d.name.as_str(),
+            CommandOptionExtInner::Role(d) => d.name.as_str(),
+            CommandOptionExtInner::Mentionable(d) => d.name.as_str(),
+            CommandOptionExtInner::Number(d) => d.name.as_str(),
+            CommandOptionExtInner::Attachment(d) => d.name.as_str(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OptionsCommandOptionDataExt {
+    /// Description of the option. It must be 100 characters or less.
+    pub description: String,
+    /// Name of the option. It must be 32 characters or less.
+    pub name: String,
+    /// Used for specifying the nested options in a subcommand(group).
+    pub options: Vec<CommandOptionExt>,
+}
+
+impl From<OptionsCommandOptionDataExt> for OptionsCommandOptionData {
+    fn from(o: OptionsCommandOptionDataExt) -> Self {
+        Self {
+            description: o.description,
+            name: o.name,
+            options: o.options.into_iter().map(CommandOption::from).collect(),
+        }
+    }
+}
+
+impl From<CommandOptionExtInner> for CommandOption {
+    fn from(inner: CommandOptionExtInner) -> Self {
+        match inner {
+            CommandOptionExtInner::SubCommand(d) => CommandOption::SubCommand(d.into()),
+            CommandOptionExtInner::SubCommandGroup(d) => CommandOption::SubCommandGroup(d.into()),
+            CommandOptionExtInner::String(d) => CommandOption::String(d),
+            CommandOptionExtInner::Integer(d) => CommandOption::Integer(d),
+            CommandOptionExtInner::Boolean(d) => CommandOption::Boolean(d),
+            CommandOptionExtInner::User(d) => CommandOption::User(d),
+            CommandOptionExtInner::Channel(d) => CommandOption::Channel(d),
+            CommandOptionExtInner::Role(d) => CommandOption::Role(d),
+            CommandOptionExtInner::Mentionable(d) => CommandOption::Mentionable(d),
+            CommandOptionExtInner::Number(d) => CommandOption::Number(d),
+            CommandOptionExtInner::Attachment(d) => CommandOption::Attachment(d),
+        }
+    }
+}
+
+impl From<CommandOptionExt> for CommandOption {
+    fn from(o: CommandOptionExt) -> Self {
+        o.inner.into()
+    }
 }
 
 /// Data sent to discord to create a command.
@@ -133,8 +227,10 @@ pub struct ApplicationCommandData {
     pub name: String,
     /// Description of the option. It must be 100 characters or less.
     pub description: String,
+    /// Optional help string. Must not be empty.
+    pub help: Option<String>,
     /// List of command options.
-    pub options: Vec<CommandOption>,
+    pub options: Vec<CommandOptionExt>,
     /// Whether the command is enabled by default when the app is added to a guild.
     pub default_permission: bool,
     /// Whether the command is a subcommand group.
@@ -151,7 +247,7 @@ impl From<ApplicationCommandData> for Command {
             description: item.description,
             id: None,
             kind: CommandType::ChatInput,
-            options: item.options,
+            options: item.options.into_iter().map(CommandOption::from).collect(),
             version: Id::new(1),
         }
     }
@@ -162,7 +258,7 @@ impl From<ApplicationCommandData> for CommandOption {
         let data = OptionsCommandOptionData {
             description: item.description,
             name: item.name,
-            options: item.options,
+            options: item.options.into_iter().map(CommandOption::from).collect(),
         };
 
         if item.group {
@@ -173,92 +269,218 @@ impl From<ApplicationCommandData> for CommandOption {
     }
 }
 
-impl CreateOption for String {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::String(data.into_choice(Vec::new()))
+impl From<ApplicationCommandData> for CommandOptionExt {
+    fn from(item: ApplicationCommandData) -> Self {
+        let data = OptionsCommandOptionDataExt {
+            description: item.description,
+            name: item.name,
+            options: item.options,
+        };
+
+        let inner = if item.group {
+            CommandOptionExtInner::SubCommandGroup(data)
+        } else {
+            CommandOptionExtInner::SubCommand(data)
+        };
+
+        CommandOptionExt {
+            inner,
+            help: item.help,
+        }
     }
 }
 
-impl CreateOption for i64 {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Integer(data.into_number(Vec::new()))
+impl CreateOption for String {
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_choice(Vec::new());
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::String(opt),
+            help,
+        }
     }
 }
+
+impl<'a> CreateOption for Cow<'a, str> {
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_choice(Vec::new());
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::String(opt),
+            help,
+        }
+    }
+}
+
+macro_rules! impl_for_int {
+    ($($ty:ty),*) => {
+        $(
+            impl CreateOption for $ty {
+                fn create_option(data: CreateOptionData) -> CommandOptionExt {
+                    let (opt, help) = data.into_number(Vec::new());
+
+                    CommandOptionExt {
+                        inner: CommandOptionExtInner::Integer(opt),
+                        help,
+                    }
+                }
+            }
+        )*
+    }
+}
+
+impl_for_int!(u8, u16, u32, u64, usize, i8, i16, i32, i64, isize);
 
 impl CreateOption for Number {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Number(data.into_number(Vec::new()))
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_number(Vec::new());
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Number(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for f64 {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Number(data.into_number(Vec::new()))
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_number(Vec::new());
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Number(opt),
+            help,
+        }
+    }
+}
+
+impl CreateOption for f32 {
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_number(Vec::new());
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Number(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for bool {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Boolean(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Boolean(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for Id<UserMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::User(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::User(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for Id<ChannelMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Channel(data.into_channel())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_channel();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Channel(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for Id<RoleMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Role(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Role(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for Id<GenericMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Mentionable(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Mentionable(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for Id<AttachmentMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Attachment(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Attachment(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for Attachment {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Attachment(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Attachment(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for User {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::User(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::User(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for ResolvedUser {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::User(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::User(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for InteractionChannel {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Channel(data.into_channel())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_channel();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Channel(opt),
+            help,
+        }
     }
 }
 
 impl CreateOption for Role {
-    fn create_option(data: CreateOptionData) -> CommandOption {
-        CommandOption::Role(data.into_data())
+    fn create_option(data: CreateOptionData) -> CommandOptionExt {
+        let (opt, help) = data.into_data();
+
+        CommandOptionExt {
+            inner: CommandOptionExtInner::Role(opt),
+            help,
+        }
     }
 }

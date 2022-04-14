@@ -1,12 +1,9 @@
 use twilight_interactions::command::{
     internal::{CommandOptionData, CreateOptionData},
-    CommandOption, CreateOption,
+    CommandOption, CommandOptionExt, CommandOptionExtInner, CreateOption,
 };
 use twilight_model::application::{
-    command::{
-        ChoiceCommandOptionData, CommandOption as TwilightCommandOption, CommandOptionChoice,
-        Number, NumberCommandOptionData,
-    },
+    command::{ChoiceCommandOptionData, CommandOptionChoice, Number, NumberCommandOptionData},
     interaction::application_command::CommandOptionValue,
 };
 
@@ -60,31 +57,35 @@ fn test_command_option_string() {
     let create_data = CreateOptionData {
         name: "name".to_string(),
         description: "description".to_string(),
+        help: None,
         required: false,
         autocomplete: false,
         data,
     };
 
-    let command_option = TwilightCommandOption::String(ChoiceCommandOptionData {
-        autocomplete: false,
-        choices: vec![
-            CommandOptionChoice::String {
-                name: "Dog".to_string(),
-                value: "dog".to_string(),
-            },
-            CommandOptionChoice::String {
-                name: "Cat".to_string(),
-                value: "cat".to_string(),
-            },
-            CommandOptionChoice::String {
-                name: "Crab".to_string(),
-                value: "crab".to_string(),
-            },
-        ],
-        description: "description".to_string(),
-        name: "name".to_string(),
-        required: false,
-    });
+    let command_option = CommandOptionExt {
+        inner: CommandOptionExtInner::String(ChoiceCommandOptionData {
+            autocomplete: false,
+            choices: vec![
+                CommandOptionChoice::String {
+                    name: "Dog".to_string(),
+                    value: "dog".to_string(),
+                },
+                CommandOptionChoice::String {
+                    name: "Cat".to_string(),
+                    value: "cat".to_string(),
+                },
+                CommandOptionChoice::String {
+                    name: "Crab".to_string(),
+                    value: "crab".to_string(),
+                },
+            ],
+            description: "description".to_string(),
+            name: "name".to_string(),
+            required: false,
+        }),
+        help: None,
+    };
 
     assert_eq!(command_option, ChoiceString::create_option(create_data))
 }
@@ -109,33 +110,37 @@ fn test_command_option_integer() {
     let create_data = CreateOptionData {
         name: "name".to_string(),
         description: "description".to_string(),
+        help: None,
         required: false,
         autocomplete: false,
         data,
     };
 
-    let command_option = TwilightCommandOption::Integer(NumberCommandOptionData {
-        autocomplete: false,
-        choices: vec![
-            CommandOptionChoice::Int {
-                name: "One".to_string(),
-                value: 1,
-            },
-            CommandOptionChoice::Int {
-                name: "Two".to_string(),
-                value: 2,
-            },
-            CommandOptionChoice::Int {
-                name: "Three".to_string(),
-                value: 3,
-            },
-        ],
-        description: "description".to_string(),
-        max_value: None,
-        min_value: None,
-        name: "name".to_string(),
-        required: false,
-    });
+    let command_option = CommandOptionExt {
+        inner: CommandOptionExtInner::Integer(NumberCommandOptionData {
+            autocomplete: false,
+            choices: vec![
+                CommandOptionChoice::Int {
+                    name: "One".to_string(),
+                    value: 1,
+                },
+                CommandOptionChoice::Int {
+                    name: "Two".to_string(),
+                    value: 2,
+                },
+                CommandOptionChoice::Int {
+                    name: "Three".to_string(),
+                    value: 3,
+                },
+            ],
+            description: "description".to_string(),
+            max_value: None,
+            min_value: None,
+            name: "name".to_string(),
+            required: false,
+        }),
+        help: None,
+    };
 
     assert_eq!(command_option, ChoiceInt::create_option(create_data));
 }
@@ -160,33 +165,37 @@ fn test_command_option_number() {
     let create_data = CreateOptionData {
         name: "name".to_string(),
         description: "description".to_string(),
+        help: None,
         required: false,
         autocomplete: false,
         data,
     };
 
-    let command_option = TwilightCommandOption::Number(NumberCommandOptionData {
-        autocomplete: false,
-        choices: vec![
-            CommandOptionChoice::Number {
-                name: "One".to_string(),
-                value: Number(1.0),
-            },
-            CommandOptionChoice::Number {
-                name: "Half".to_string(),
-                value: Number(0.5),
-            },
-            CommandOptionChoice::Number {
-                name: "Quarter".to_string(),
-                value: Number(0.25),
-            },
-        ],
-        description: "description".to_string(),
-        max_value: None,
-        min_value: None,
-        name: "name".to_string(),
-        required: false,
-    });
+    let command_option = CommandOptionExt {
+        inner: CommandOptionExtInner::Number(NumberCommandOptionData {
+            autocomplete: false,
+            choices: vec![
+                CommandOptionChoice::Number {
+                    name: "One".to_string(),
+                    value: Number(1.0),
+                },
+                CommandOptionChoice::Number {
+                    name: "Half".to_string(),
+                    value: Number(0.5),
+                },
+                CommandOptionChoice::Number {
+                    name: "Quarter".to_string(),
+                    value: Number(0.25),
+                },
+            ],
+            description: "description".to_string(),
+            max_value: None,
+            min_value: None,
+            name: "name".to_string(),
+            required: false,
+        }),
+        help: None,
+    };
 
     assert_eq!(command_option, ChoiceNumber::create_option(create_data));
 }

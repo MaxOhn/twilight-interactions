@@ -59,18 +59,8 @@ fn test_command_model() {
         avatar: None,
         bot: false,
         discriminator: 1,
-        email: None,
-        flags: None,
         id: user_id,
-        locale: None,
-        mfa_enabled: None,
         name: "someone".into(),
-        premium_type: None,
-        public_flags: None,
-        system: None,
-        verified: None,
-        accent_color: None,
-        banner: None,
     };
 
     let resolved = CommandInteractionDataResolved {

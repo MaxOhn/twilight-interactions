@@ -230,7 +230,7 @@ impl<'a> CommandInputData<'a> {
             .find(|option| option.name == name)
             .map(|option| &option.value)
         {
-            Some(value) => value.clone(),
+            Some(value) => value.clone(), // TODO
             None => return Ok(None),
         };
 
@@ -346,6 +346,19 @@ impl CommandOption for String {
     }
 }
 
+impl<'a> CommandOption for Cow<'a, str> {
+    fn from_option(
+        value: CommandOptionValue,
+        _data: CommandOptionData,
+        _resolved: Option<&CommandInteractionDataResolved>,
+    ) -> Result<Self, ParseOptionErrorType> {
+        match value {
+            CommandOptionValue::String(value) => Ok(Self::Owned(value)),
+            other => Err(ParseOptionErrorType::InvalidType(other.kind())),
+        }
+    }
+}
+
 impl CommandOption for i64 {
     fn from_option(
         value: CommandOptionValue,
@@ -372,6 +385,42 @@ impl CommandOption for i64 {
         Ok(value)
     }
 }
+
+macro_rules! impl_for_int {
+    ($($ty:ty),*) => {
+        $(
+            impl CommandOption for $ty {
+                fn from_option(
+                    value: CommandOptionValue,
+                    data: CommandOptionData,
+                    _resolved: Option<&CommandInteractionDataResolved>,
+                ) -> Result<Self, ParseOptionErrorType> {
+                    let value = match value {
+                        CommandOptionValue::Integer(value) => value,
+                        other => return Err(ParseOptionErrorType::InvalidType(other.kind())),
+                    };
+
+                    if let Some(NumberCommandOptionValue::Integer(min)) = data.min_value {
+                        if value < min {
+                            return Err(ParseOptionErrorType::IntegerOutOfRange(value));
+                        }
+                    }
+
+                    if let Some(NumberCommandOptionValue::Integer(max)) = data.max_value {
+                        if value > max {
+                            return Err(ParseOptionErrorType::IntegerOutOfRange(value));
+                        }
+                    }
+
+                    Ok(value as $ty)
+                }
+            }
+        )*
+    }
+}
+
+// User must be wary of overflows
+impl_for_int!(u8, u16, u32, u64, usize, i8, i16, i32, isize);
 
 impl CommandOption for Number {
     fn from_option(
@@ -407,6 +456,16 @@ impl CommandOption for f64 {
         resolved: Option<&CommandInteractionDataResolved>,
     ) -> Result<Self, ParseOptionErrorType> {
         Number::from_option(value, data, resolved).map(|val| val.0)
+    }
+}
+
+impl CommandOption for f32 {
+    fn from_option(
+        value: CommandOptionValue,
+        data: CommandOptionData,
+        resolved: Option<&CommandInteractionDataResolved>,
+    ) -> Result<Self, ParseOptionErrorType> {
+        Number::from_option(value, data, resolved).map(|val| val.0 as f32)
     }
 }
 

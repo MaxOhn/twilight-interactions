@@ -1,7 +1,7 @@
 use proc_macro2::{Ident, Span};
 use syn::{spanned::Spanned, Attribute, Error, Fields, Result, Type, TypePath, Variant};
 
-use crate::parse::{find_attr, parse_desc, parse_name, NamedAttrs};
+use crate::parse::{find_attr, parse_desc, parse_help, parse_name, NamedAttrs};
 
 /// Parsed enum variant
 pub struct ParsedVariant {
@@ -101,6 +101,8 @@ pub struct TypeAttribute {
     pub name: String,
     /// Description of the command
     pub desc: Option<String>,
+    /// Optional help
+    pub help: Option<String>,
     /// Whether the command should be enabled by default.
     pub default_permission: bool,
 }
@@ -109,13 +111,14 @@ impl TypeAttribute {
     /// Parse a single [`Attribute`]
     pub fn parse(attr: &Attribute) -> Result<Self> {
         let meta = attr.parse_meta()?;
-        let attrs = NamedAttrs::parse(meta, &["name", "desc", "default_permission"])?;
+        let attrs = NamedAttrs::parse(meta, &["name", "desc", "default_permission", "help"])?;
 
         let name = match attrs.get("name") {
             Some(val) => parse_name(val)?,
             None => return Err(Error::new(attr.span(), "Missing required attribute `name`")),
         };
         let desc = attrs.get("desc").map(parse_desc).transpose()?;
+        let help = attrs.get("help").map(parse_help).transpose()?;
         let default_permission = attrs
             .get("default_permission")
             .map(|v| v.parse_bool())
@@ -125,6 +128,7 @@ impl TypeAttribute {
         Ok(Self {
             name,
             desc,
+            help,
             default_permission,
         })
     }
