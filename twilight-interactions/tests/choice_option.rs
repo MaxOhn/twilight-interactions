@@ -5,7 +5,10 @@ use twilight_interactions::command::{
     CommandOption, CommandOptionExt, CommandOptionExtInner, CreateOption,
 };
 use twilight_model::application::{
-    command::{ChoiceCommandOptionData, CommandOptionChoice, Number, NumberCommandOptionData},
+    command::{
+        ChoiceCommandOptionData, CommandOption as TwilightCommandOption, CommandOptionChoice,
+        NumberCommandOptionData,
+    },
     interaction::application_command::CommandOptionValue,
 };
 
@@ -168,7 +171,7 @@ fn test_command_option_integer() {
 #[test]
 fn test_command_option_number() {
     let parsed = ChoiceNumber::from_option(
-        CommandOptionValue::Number(Number(0.5)),
+        CommandOptionValue::Number(0.5),
         CommandOptionData::default(),
         None,
     );
@@ -201,17 +204,17 @@ fn test_command_option_number() {
             CommandOptionChoice::Number {
                 name: "One".to_string(),
                 name_localizations: None,
-                value: Number(1.0),
+                value: 1.0,
             },
             CommandOptionChoice::Number {
                 name: "Half".to_string(),
                 name_localizations: None,
-                value: Number(0.5),
+                value: 0.5,
             },
             CommandOptionChoice::Number {
                 name: "Quarter".to_string(),
                 name_localizations: None,
-                value: Number(0.25),
+                value: 0.25,
             },
         ],
         description: "description".to_string(),
