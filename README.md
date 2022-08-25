@@ -31,11 +31,11 @@ To install `twilight-interactions`, add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-twilight-interactions = "0.10.0"
+twilight-interactions = "0.12"
 ```
 
-The crate major version follow the version of the official twilight crates.
-The MSRV is two version behind the latest stable version (current is `1.57`)
+The crate's major version follows the version of the official twilight crates.
+The MSRV is two versions behind the latest stable version (current is `1.60`)
 and can be bumped in minor updates.
 
 ## Documentation

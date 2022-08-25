@@ -1,11 +1,12 @@
 //! Parsing of struct fields and attributes
 
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, Attribute, Error, Lit, Result, Type};
 
 use crate::parse::{
-    extract_option, find_attr, parse_desc, parse_help, parse_name, AttrValue, NamedAttrs,
+    extract_option, extract_type, find_attr, parse_desc, parse_help, parse_name, parse_path,
+    AttrValue, NamedAttrs,
 };
 
 /// Parsed struct field
@@ -19,17 +20,30 @@ pub struct StructField {
 }
 
 /// Type of a parsed struct field
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FieldType {
-    Required,
+    Autocomplete,
     Optional,
+    Required,
 }
 
 impl StructField {
     /// Parse a [`syn::Field`] as a [`StructField`]
     pub fn from_field(field: syn::Field) -> Result<Self> {
         let (kind, ty) = match extract_option(&field.ty) {
-            Some(ty) => (FieldType::Optional, ty),
-            None => (FieldType::Required, field.ty.clone()),
+            Some(ty) => match extract_type(&ty, "AutocompleteValue") {
+                Some(_) => {
+                    return Err(Error::new(
+                        ty.span(),
+                        "AutocompleteValue cannot be wrapped in `Option<T>`",
+                    ))
+                }
+                None => (FieldType::Optional, ty),
+            },
+            None => match extract_type(&field.ty, "AutocompleteValue") {
+                Some(ty) => (FieldType::Autocomplete, ty),
+                None => (FieldType::Required, field.ty.clone()),
+            },
         };
 
         let attributes = match find_attr(&field.attrs, "command") {
@@ -56,44 +70,83 @@ impl StructField {
 impl FieldType {
     pub fn required(&self) -> bool {
         match self {
-            FieldType::Required => true,
-            FieldType::Optional => false,
+            Self::Required => true,
+            Self::Autocomplete | Self::Optional => false,
         }
     }
 }
 
 /// Parsed type attribute
 pub struct TypeAttribute {
-    /// Rename the field to the given name
+    /// Whether the model is an autocomplete interaction model.
+    pub autocomplete: Option<bool>,
+    /// Command name.
     pub name: Option<String>,
-    /// Overwrite the field description
+    /// Localization dictionary for the command name.
+    pub name_localizations: Option<syn::Path>,
+    /// Command description.
     pub desc: Option<String>,
+    /// Localization dictionary for the command description.
+    pub desc_localizations: Option<syn::Path>,
+    /// Default permissions required for a member to run the command.
+    pub default_permissions: Option<syn::Path>,
+    /// Whether the command is available in DMs.
+    pub dm_permission: Option<bool>,
     /// Optional help
     pub help: Option<String>,
-    /// Whether the command should be enabled by default.
-    pub default_permission: bool,
 }
 
 impl TypeAttribute {
     /// Parse a single [`Attribute`]
     pub fn parse(attr: &Attribute) -> Result<Self> {
         let meta = attr.parse_meta()?;
-        let attrs = NamedAttrs::parse(meta, &["name", "desc", "default_permission", "help"])?;
+        let attrs = NamedAttrs::parse(
+            meta,
+            &[
+                "autocomplete",
+                "name",
+                "name_localizations",
+                "desc",
+                "desc_localizations",
+                "default_permissions",
+                "dm_permission",
+                "help",
+            ],
+        )?;
 
-        let name = attrs.get("name").map(parse_name).transpose()?;
-        let desc = attrs.get("desc").map(parse_desc).transpose()?;
-        let help = attrs.get("help").map(parse_help).transpose()?;
-        let default_permission = attrs
-            .get("default_permission")
+        let autocomplete = attrs
+            .get("autocomplete")
             .map(|v| v.parse_bool())
-            .transpose()?
-            .unwrap_or(true);
+            .transpose()?;
+        let name = attrs.get("name").map(parse_name).transpose()?;
+        let name_localizations = attrs
+            .get("name_localizations")
+            .map(parse_path)
+            .transpose()?;
+        let desc = attrs.get("desc").map(parse_desc).transpose()?;
+        let desc_localizations = attrs
+            .get("desc_localizations")
+            .map(parse_path)
+            .transpose()?;
+        let default_permissions = attrs
+            .get("default_permissions")
+            .map(parse_path)
+            .transpose()?;
+        let dm_permission = attrs
+            .get("dm_permission")
+            .map(|v| v.parse_bool())
+            .transpose()?;
+        let help = attrs.get("help").map(parse_help).transpose()?;
 
         Ok(Self {
+            autocomplete,
             name,
+            name_localizations,
             desc,
+            desc_localizations,
+            default_permissions,
+            dm_permission,
             help,
-            default_permission,
         })
     }
 }
@@ -103,10 +156,14 @@ impl TypeAttribute {
 pub struct FieldAttribute {
     /// Rename the field to the given name
     pub rename: Option<String>,
+    /// Localization dictionary for the field name.
+    pub name_localizations: Option<syn::Path>,
     /// Overwrite the field description
     pub desc: Option<String>,
     /// Optional help
     pub help: Option<String>,
+    /// Localization dictionary for the command description.
+    pub desc_localizations: Option<syn::Path>,
     /// Whether the field supports autocomplete
     pub autocomplete: bool,
     /// Limit to specific channel types
@@ -115,6 +172,10 @@ pub struct FieldAttribute {
     pub max_value: Option<CommandOptionValue>,
     /// Minimum value permitted
     pub min_value: Option<CommandOptionValue>,
+    /// Maximum string length
+    pub max_length: Option<u16>,
+    /// Minimum string length
+    pub min_length: Option<u16>,
 }
 
 impl FieldAttribute {
@@ -125,18 +186,30 @@ impl FieldAttribute {
             meta,
             &[
                 "rename",
+                "name_localizations",
                 "desc",
                 "help",
+                "desc_localizations",
                 "autocomplete",
                 "channel_types",
                 "max_value",
                 "min_value",
+                "max_length",
+                "min_length",
             ],
         )?;
 
         let rename = attrs.get("rename").map(parse_name).transpose()?;
+        let name_localizations = attrs
+            .get("name_localizations")
+            .map(parse_path)
+            .transpose()?;
         let desc = attrs.get("desc").map(parse_desc).transpose()?;
         let help = attrs.get("help").map(parse_help).transpose()?;
+        let desc_localizations = attrs
+            .get("desc_localizations")
+            .map(parse_path)
+            .transpose()?;
         let autocomplete = attrs
             .get("autocomplete")
             .map(|val| val.parse_bool())
@@ -155,15 +228,27 @@ impl FieldAttribute {
             .get("min_value")
             .map(CommandOptionValue::parse_attr)
             .transpose()?;
+        let max_length = attrs
+            .get("max_length")
+            .map(|val| val.parse_int())
+            .transpose()?;
+        let min_length = attrs
+            .get("min_length")
+            .map(|val| val.parse_int())
+            .transpose()?;
 
         Ok(Self {
             rename,
+            name_localizations,
             desc,
             help,
+            desc_localizations,
             autocomplete,
             channel_types,
             max_value,
             min_value,
+            max_length,
+            min_length,
         })
     }
 
@@ -272,14 +357,25 @@ pub fn channel_type(kind: &ChannelType) -> TokenStream {
 /// Convert a [`Option<CommandOptionValue>`] into a [`TokenStream`]
 pub fn command_option_value(value: Option<CommandOptionValue>) -> TokenStream {
     match value {
-        None => quote!(None),
+        None => quote!(::std::option::Option::None),
         Some(CommandOptionValue::Integer(inner)) => {
-            quote!(Some(::twilight_model::application::command::CommandOptionValue::Integer(#inner)))
+            quote!(::std::option::Option::Some(::twilight_model::application::command::CommandOptionValue::Integer(#inner)))
         }
         Some(CommandOptionValue::Number(inner)) => quote! {
-            Some(::twilight_model::application::command::CommandOptionValue::Number(
+            ::std::option::Option::Some(::twilight_model::application::command::CommandOptionValue::Number(
                 ::twilight_model::application::command::Number(#inner)
             ))
         },
+    }
+}
+
+/// Convert an [`Option<T>`] into a [`TokenStream`]
+pub fn optional<T>(value: Option<T>) -> TokenStream
+where
+    T: ToTokens,
+{
+    match value {
+        Some(value) => quote!(::std::option::Option::Some(#value)),
+        None => quote!(::std::option::Option::None),
     }
 }

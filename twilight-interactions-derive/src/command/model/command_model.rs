@@ -1,27 +1,53 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{DeriveInput, FieldsNamed, Result};
+use syn::{DeriveInput, Error, FieldsNamed, Result};
 
-use crate::command::model::parse::{channel_type, command_option_value};
+use super::parse::{optional, FieldType, StructField, TypeAttribute};
+use crate::{
+    command::model::parse::{channel_type, command_option_value},
+    parse::find_attr,
+};
 
-use super::parse::{FieldType, StructField};
-
-/// Implementation of CommandModel derive macro
+/// Implementation of `CommandModel` derive macro
 pub fn impl_command_model(input: DeriveInput, fields: Option<FieldsNamed>) -> Result<TokenStream> {
     let ident = &input.ident;
     let generics = &input.generics;
+    let where_clause = &generics.where_clause;
     let fields = match fields {
         Some(fields) => StructField::from_fields(fields)?,
         None => Vec::new(),
     };
 
-    let field_unknown = field_unknown();
+    let autocomplete = match find_attr(&input.attrs, "command") {
+        Some(attr) => TypeAttribute::parse(attr)?.autocomplete.unwrap_or(false),
+        None => false,
+    };
+
+    for field in &fields {
+        // Ensure all fields are either `AutocompleteValue` or `Option`s
+        if autocomplete && ![FieldType::Autocomplete, FieldType::Optional].contains(&field.kind) {
+            return Err(Error::new(
+                field.span,
+                "Autocomplete models only supports `Option` or `AutocompleteValue` field type",
+            ));
+        }
+
+        // `AutocompleteValue` is only allowed in autocomplete models
+        if !autocomplete && field.kind == FieldType::Autocomplete {
+            return Err(Error::new(
+                field.span,
+                "`AutocompleteValue` is only available in autocomplete models. Add the `#[command(autocomplete = true)]` attribute to the type."
+            ));
+        }
+    }
+
+    let field_unknown = field_unknown(autocomplete);
     let fields_init = fields.iter().map(field_init);
     let fields_match_arms = fields.iter().map(field_match_arm);
     let fields_constructor = fields.iter().map(field_constructor);
 
     Ok(quote! {
-        impl #generics ::twilight_interactions::command::CommandModel for #ident #generics {
+        impl #generics ::twilight_interactions::command::CommandModel for #ident #generics #where_clause {
             fn from_interaction(
                 data: ::twilight_interactions::command::CommandInputData,
             ) -> ::std::result::Result<Self, ::twilight_interactions::error::ParseError> {
@@ -55,6 +81,8 @@ fn field_match_arm(field: &StructField) -> TokenStream {
     let channel_types = field.attributes.channel_types.iter().map(channel_type);
     let max_value = command_option_value(field.attributes.max_value);
     let min_value = command_option_value(field.attributes.min_value);
+    let max_length = optional(field.attributes.max_length);
+    let min_length = optional(field.attributes.min_length);
 
     quote_spanned! {span=>
         #name => {
@@ -62,6 +90,8 @@ fn field_match_arm(field: &StructField) -> TokenStream {
                 channel_types: ::std::vec![#(#channel_types),*],
                 max_value: #max_value,
                 min_value: #min_value,
+                max_length: #max_length,
+                min_length: #min_length,
             };
 
             match ::twilight_interactions::command::CommandOption::from_option(opt.value, option_data, data.resolved.as_deref()) {
@@ -97,18 +127,28 @@ fn field_constructor(field: &StructField) -> TokenStream {
             }
         },
         FieldType::Optional => quote!(#ident),
+        FieldType::Autocomplete => quote! {
+            #ident: match #ident {
+                Some(value) => value,
+                None => ::twilight_interactions::command::AutocompleteValue::None,
+            }
+        },
     }
 }
 
 /// Generate unknown field match arm
-fn field_unknown() -> TokenStream {
-    quote! {
-        return ::std::result::Result::Err(
-            ::twilight_interactions::error::ParseError::Option(
-                ::twilight_interactions::error::ParseOptionError {
-                    field: ::std::convert::From::from(other),
-                    kind: ::twilight_interactions::error::ParseOptionErrorType::UnknownField,
-            })
-        )
+fn field_unknown(autocomplete: bool) -> TokenStream {
+    if autocomplete {
+        quote!(continue)
+    } else {
+        quote! {
+            return ::std::result::Result::Err(
+                ::twilight_interactions::error::ParseError::Option(
+                    ::twilight_interactions::error::ParseOptionError {
+                        field: ::std::convert::From::from(other),
+                        kind: ::twilight_interactions::error::ParseOptionErrorType::UnknownField,
+                })
+            )
+        }
     }
 }

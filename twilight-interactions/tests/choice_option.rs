@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use twilight_interactions::command::{
     internal::{CommandOptionData, CreateOptionData},
     CommandOption, CommandOptionExt, CommandOptionExtInner, CreateOption,
@@ -9,7 +11,7 @@ use twilight_model::application::{
 
 #[derive(CommandOption, CreateOption, Debug, Clone, Copy, PartialEq, Eq)]
 enum ChoiceString {
-    #[option(name = "Dog", value = "dog")]
+    #[option(name = "Dog", name_localizations = "name_dog", value = "dog")]
     Dog,
     #[option(name = "Cat", value = "cat")]
     Cat,
@@ -37,6 +39,10 @@ enum ChoiceNumber {
     Quarter,
 }
 
+pub fn name_dog() -> [(&'static str, &'static str); 1] {
+    [("en", "Dog")]
+}
+
 #[test]
 fn test_command_option_string() {
     let parsed = ChoiceString::from_option(
@@ -53,39 +59,47 @@ fn test_command_option_string() {
         channel_types: Vec::new(),
         max_value: None,
         min_value: None,
+        max_length: None,
+        min_length: None,
     };
     let create_data = CreateOptionData {
         name: "name".to_string(),
+        name_localizations: None,
         description: "description".to_string(),
+        description_localizations: None,
         help: None,
         required: false,
         autocomplete: false,
         data,
     };
 
-    let command_option = CommandOptionExt {
-        inner: CommandOptionExtInner::String(ChoiceCommandOptionData {
-            autocomplete: false,
-            choices: vec![
-                CommandOptionChoice::String {
-                    name: "Dog".to_string(),
-                    value: "dog".to_string(),
-                },
-                CommandOptionChoice::String {
-                    name: "Cat".to_string(),
-                    value: "cat".to_string(),
-                },
-                CommandOptionChoice::String {
-                    name: "Crab".to_string(),
-                    value: "crab".to_string(),
-                },
-            ],
-            description: "description".to_string(),
-            name: "name".to_string(),
-            required: false,
-        }),
-        help: None,
-    };
+    let command_option = TwilightCommandOption::String(ChoiceCommandOptionData {
+        autocomplete: false,
+        choices: vec![
+            CommandOptionChoice::String {
+                name: "Dog".to_string(),
+                name_localizations: Some(HashMap::from([("en".into(), "Dog".into())])),
+                value: "dog".to_string(),
+            },
+            CommandOptionChoice::String {
+                name: "Cat".to_string(),
+                name_localizations: None,
+                value: "cat".to_string(),
+            },
+            CommandOptionChoice::String {
+                name: "Crab".to_string(),
+                name_localizations: None,
+                value: "crab".to_string(),
+            },
+        ],
+        description: "description".to_string(),
+        description_localizations: None,
+        min_length: None,
+        max_length: None,
+        name: "name".to_string(),
+        name_localizations: None,
+        required: false,
+    });
 
     assert_eq!(command_option, ChoiceString::create_option(create_data))
 }
@@ -106,41 +120,47 @@ fn test_command_option_integer() {
         channel_types: Vec::new(),
         max_value: None,
         min_value: None,
+        min_length: None,
+        max_length: None,
     };
     let create_data = CreateOptionData {
         name: "name".to_string(),
+        name_localizations: None,
         description: "description".to_string(),
+        description_localizations: None,
         help: None,
         required: false,
         autocomplete: false,
         data,
     };
 
-    let command_option = CommandOptionExt {
-        inner: CommandOptionExtInner::Integer(NumberCommandOptionData {
-            autocomplete: false,
-            choices: vec![
-                CommandOptionChoice::Int {
-                    name: "One".to_string(),
-                    value: 1,
-                },
-                CommandOptionChoice::Int {
-                    name: "Two".to_string(),
-                    value: 2,
-                },
-                CommandOptionChoice::Int {
-                    name: "Three".to_string(),
-                    value: 3,
-                },
-            ],
-            description: "description".to_string(),
-            max_value: None,
-            min_value: None,
-            name: "name".to_string(),
-            required: false,
-        }),
-        help: None,
-    };
+    let command_option = TwilightCommandOption::Integer(NumberCommandOptionData {
+        autocomplete: false,
+        choices: vec![
+            CommandOptionChoice::Int {
+                name: "One".to_string(),
+                name_localizations: None,
+                value: 1,
+            },
+            CommandOptionChoice::Int {
+                name: "Two".to_string(),
+                name_localizations: None,
+                value: 2,
+            },
+            CommandOptionChoice::Int {
+                name: "Three".to_string(),
+                name_localizations: None,
+                value: 3,
+            },
+        ],
+        description: "description".to_string(),
+        description_localizations: None,
+        max_value: None,
+        min_value: None,
+        name: "name".to_string(),
+        name_localizations: None,
+        required: false,
+    });
 
     assert_eq!(command_option, ChoiceInt::create_option(create_data));
 }
@@ -161,41 +181,47 @@ fn test_command_option_number() {
         channel_types: Vec::new(),
         max_value: None,
         min_value: None,
+        max_length: None,
+        min_length: None,
     };
     let create_data = CreateOptionData {
         name: "name".to_string(),
+        name_localizations: None,
         description: "description".to_string(),
+        description_localizations: None,
         help: None,
         required: false,
         autocomplete: false,
         data,
     };
 
-    let command_option = CommandOptionExt {
-        inner: CommandOptionExtInner::Number(NumberCommandOptionData {
-            autocomplete: false,
-            choices: vec![
-                CommandOptionChoice::Number {
-                    name: "One".to_string(),
-                    value: Number(1.0),
-                },
-                CommandOptionChoice::Number {
-                    name: "Half".to_string(),
-                    value: Number(0.5),
-                },
-                CommandOptionChoice::Number {
-                    name: "Quarter".to_string(),
-                    value: Number(0.25),
-                },
-            ],
-            description: "description".to_string(),
-            max_value: None,
-            min_value: None,
-            name: "name".to_string(),
-            required: false,
-        }),
-        help: None,
-    };
+    let command_option = TwilightCommandOption::Number(NumberCommandOptionData {
+        autocomplete: false,
+        choices: vec![
+            CommandOptionChoice::Number {
+                name: "One".to_string(),
+                name_localizations: None,
+                value: Number(1.0),
+            },
+            CommandOptionChoice::Number {
+                name: "Half".to_string(),
+                name_localizations: None,
+                value: Number(0.5),
+            },
+            CommandOptionChoice::Number {
+                name: "Quarter".to_string(),
+                name_localizations: None,
+                value: Number(0.25),
+            },
+        ],
+        description: "description".to_string(),
+        description_localizations: None,
+        max_value: None,
+        min_value: None,
+        name: "name".to_string(),
+        name_localizations: None,
+        required: false,
+    });
 
     assert_eq!(command_option, ChoiceNumber::create_option(create_data));
 }

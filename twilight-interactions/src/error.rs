@@ -5,23 +5,21 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
-use twilight_model::{
-    application::command::{CommandOptionType, Number},
-    channel::ChannelType,
-};
+use twilight_model::{application::command::CommandOptionType, channel::ChannelType};
 
 /// Error when parsing a command.
 ///
-/// This error type is returned by the [`CommandModel::from_interaction`] method.
+/// This error type is returned by the [`CommandModel::from_interaction`]
+/// method.
 ///
 /// [`CommandModel::from_interaction`]: crate::command::CommandModel::from_interaction
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ParseError {
     /// Received empty option list.
     ///
     /// This error is only returned when parsing subcommands.
     EmptyOptions,
-    /// Error parsing a command option.
+    /// Error when parsing a command option.
     Option(ParseOptionError),
 }
 
@@ -39,7 +37,7 @@ impl Display for ParseError {
 /// Error when parsing a command option.
 ///
 /// This type is used by [`ParseError`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParseOptionError {
     /// The name of the option field that caused the error.
     pub field: String,
@@ -62,7 +60,10 @@ impl Display for ParseOptionError {
                 write!(f, "out of range integer, received `{}`", val)
             }
             ParseOptionErrorType::NumberOutOfRange(val) => {
-                write!(f, "out of range number, received `{}`", val.0)
+                write!(f, "out of range number, received `{}`", val)
+            }
+            ParseOptionErrorType::StringLengthOutOfRange(val) => {
+                write!(f, "out of range string length, received `{}`", val)
             }
             ParseOptionErrorType::InvalidChannelType(kind) => {
                 write!(f, "invalid channel type, received `{}`", kind.name())
@@ -76,17 +77,19 @@ impl Display for ParseOptionError {
 }
 
 /// Type of [`ParseOptionError`] that occurred.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ParseOptionErrorType {
     /// Received an invalid option type.
     InvalidType(CommandOptionType),
     /// Received an invalid value on choice option type.
     InvalidChoice(String),
-    /// Received an out of range integer
+    /// Received an out of range integer.
     IntegerOutOfRange(i64),
-    /// Received an out of range floating point number
-    NumberOutOfRange(Number),
-    /// Received an invalid channel type
+    /// Received an out of range floating point number.
+    NumberOutOfRange(f64),
+    /// Received an out of range string.
+    StringLengthOutOfRange(String),
+    /// Received an invalid channel type.
     InvalidChannelType(ChannelType),
     /// Failed to resolve data associated with an ID.
     LookupFailed(u64),

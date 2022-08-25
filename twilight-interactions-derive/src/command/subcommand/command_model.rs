@@ -4,19 +4,20 @@ use syn::{spanned::Spanned, DeriveInput, Result, Variant};
 
 use super::parse::ParsedVariant;
 
-/// Implementation of CommandModel derive macro
+/// Implementation of `CommandModel` derive macro
 pub fn impl_command_model(
     input: DeriveInput,
     variants: impl IntoIterator<Item = Variant>,
 ) -> Result<TokenStream> {
     let ident = &input.ident;
     let generics = &input.generics;
+    let where_clause = &generics.where_clause;
     let variants = ParsedVariant::from_variants(variants, input.span())?;
 
     let variants_match_arms = variants.iter().map(variant_match_arm);
 
     Ok(quote! {
-        impl #generics ::twilight_interactions::command::CommandModel for #ident # generics {
+        impl #generics ::twilight_interactions::command::CommandModel for #ident #generics #where_clause {
             fn from_interaction(
                 data: ::twilight_interactions::command::CommandInputData,
             ) -> ::std::result::Result<Self, ::twilight_interactions::error::ParseError> {

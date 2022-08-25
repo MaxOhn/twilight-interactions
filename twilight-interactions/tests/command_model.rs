@@ -1,23 +1,27 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use maplit::hashmap;
-use twilight_interactions::command::{CommandInputData, CommandModel, ResolvedUser};
+use twilight_interactions::command::{CommandInputData, CommandModel, CommandOption, ResolvedUser};
 use twilight_model::{
     application::interaction::application_command::{
         CommandDataOption, CommandInteractionDataResolved, CommandOptionValue, InteractionMember,
     },
-    datetime::Timestamp,
     guild::Permissions,
     id::Id,
     user::User,
+    util::Timestamp,
 };
 
 #[derive(CommandModel, Debug, PartialEq, Eq)]
-struct DemoCommand {
+struct DemoCommand<'a, T>
+where
+    T: CommandOption,
+{
     #[command(rename = "member", desc = "test")]
     user: ResolvedUser,
     text: String,
     number: Option<i64>,
+    generic: T,
+    cow: Cow<'a, str>,
 }
 
 #[derive(CommandModel, Debug, PartialEq, Eq)]
@@ -30,17 +34,22 @@ fn test_command_model() {
         CommandDataOption {
             name: "member".to_string(),
             value: CommandOptionValue::User(user_id),
-            focused: false,
         },
         CommandDataOption {
             name: "text".into(),
             value: CommandOptionValue::String("hello world".into()),
-            focused: false,
         },
         CommandDataOption {
             name: "number".into(),
             value: CommandOptionValue::Integer(42),
-            focused: false,
+        },
+        CommandDataOption {
+            name: "generic".into(),
+            value: CommandOptionValue::Integer(0),
+        },
+        CommandDataOption {
+            name: "cow".into(),
+            value: CommandOptionValue::String("cow".into()),
         },
     ];
 
@@ -65,9 +74,9 @@ fn test_command_model() {
 
     let resolved = CommandInteractionDataResolved {
         channels: HashMap::new(),
-        members: hashmap! { user_id => member.clone() },
+        members: HashMap::from([(user_id, member.clone())]),
         roles: HashMap::new(),
-        users: hashmap! { user_id => user.clone() },
+        users: HashMap::from([(user_id, user.clone())]),
         messages: HashMap::new(),
         attachments: HashMap::new(),
     };
@@ -87,6 +96,8 @@ fn test_command_model() {
             },
             text: "hello world".into(),
             number: Some(42),
+            generic: 0_i64,
+            cow: Cow::Borrowed("cow")
         },
         result
     );

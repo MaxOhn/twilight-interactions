@@ -1,6 +1,6 @@
 //! Utility functions to parse macro input.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use proc_macro2::Span;
 use syn::{spanned::Spanned, Attribute, Error, Lit, Meta, MetaNameValue, Result};
@@ -8,13 +8,17 @@ use syn::{spanned::Spanned, Attribute, Error, Lit, Meta, MetaNameValue, Result};
 /// Extracts type from an [`Option<T>`]
 ///
 /// This function extracts the type in an [`Option<T>`]. It currently only works
-/// with the `Option` syntax (not the `std::option::Option` or similar).
+/// with the `Option` syntax (not `std::option::Option` or similar).
 pub fn extract_option(ty: &syn::Type) -> Option<syn::Type> {
-    fn check_name(path: &syn::Path) -> bool {
+    extract_type(ty, "Option")
+}
+
+pub fn extract_type(ty: &syn::Type, name: &str) -> Option<syn::Type> {
+    let check_name = |path: &syn::Path| {
         path.leading_colon.is_none()
             && path.segments.len() == 1
-            && path.segments.first().unwrap().ident == "Option"
-    }
+            && path.segments.first().unwrap().ident == name
+    };
 
     match ty {
         syn::Type::Path(path) if path.qself.is_none() && check_name(&path.path) => {
@@ -51,8 +55,8 @@ pub fn find_attr<'a>(attrs: &'a [Attribute], name: &str) -> Option<&'a Attribute
 
 /// Parse description from #[doc] attributes.
 ///
-/// Only fist attribute is parsed (corresponding to the first line of documentation)
-/// https://doc.rust-lang.org/rustdoc/the-doc-attribute.html
+/// Only the first attribute is parsed (corresponding to the first line of
+/// documentation) https://doc.rust-lang.org/rustdoc/the-doc-attribute.html
 pub fn parse_doc(attrs: &[Attribute], span: Span) -> Result<String> {
     let attr = match find_attr(attrs, "doc") {
         Some(attr) => attr,
@@ -174,12 +178,33 @@ impl AttrValue {
             )),
         }
     }
+
+    pub fn parse_int<N>(&self) -> Result<N>
+    where
+        N: FromStr,
+        N::Err: Display,
+    {
+        match self.inner() {
+            Lit::Int(inner) => inner.base10_parse(),
+            _ => Err(Error::new(
+                self.0.span(),
+                "Invalid attribute type, expected integer",
+            )),
+        }
+    }
 }
 
 impl Spanned for AttrValue {
     fn span(&self) -> Span {
         self.0.span()
     }
+}
+
+/// Parse function or item path.
+pub fn parse_path(val: &AttrValue) -> Result<syn::Path> {
+    let val = val.parse_string()?;
+
+    syn::parse_str(&val)
 }
 
 /// Parse command or option name

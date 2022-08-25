@@ -2,14 +2,15 @@
 //!
 //!
 //! # Slash commands
-//! This crate provide parsing slash command data as typed structs. It also provide a convenient
-//! way to register commands from these structs. Derive macros are provided to automatically
-//! implement related traits.
+//! This crate provides parsing slash command data as typed structs. It also
+//! provides a convenient way to register commands from these structs. Derive
+//! macros are provided to automatically implement related traits.
 //!
 //! - Command parsing with the [`CommandModel`] trait.
 //! - Command creation with the [`CreateCommand`] trait.
 //! - Support for subcommands and subcommand groups.
-//! - Command option choices with the [`CommandOption`] and [`CreateOption`] traits.
+//! - Command option choices with the [`CommandOption`] and [`CreateOption`]
+//!   traits.
 //!
 //! Read the documentation of these traits for usage examples.
 //!
@@ -27,12 +28,38 @@
 //! }
 //! ```
 //!
+//! ## Localization
+//! Localization of names and descriptions of slash commands is supported
+//! using the `name_localizations` and `desc_localizations` attributes on
+//! applicable structs.
+//!
+//! The attribute takes a function that returns any type that implements
+//! `IntoIterator<Item = (ToString, ToString)>`, where the first tuple element
+//! is a valid [locale](https://discord.com/developers/docs/reference#locales)
+//! and the second tuple element is the localized value.
+//!
+//! ```
+//! use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
+//!
+//! #[derive(CommandModel, CreateCommand)]
+//! #[command(name = "hello", desc = "Say hello", desc_localizations = "hello_desc")]
+//! struct HelloCommand;
+//!
+//! pub fn hello_desc() -> [(&'static str, &'static str); 2] {
+//!     [("fr", "Dis bonjour"), ("de", "Sag Hallo")]
+//! }
+//! ```
+//!
+//! See the documentation of the traits to see where these attributes can be
+//! used.
+//!
 //! ## Supported types
-//! The [`CommandOption`] and [`CreateOption`] traits are implemented for the following types:
+//! The [`CommandOption`] and [`CreateOption`] traits are implemented for the
+//! following types:
 //!
 //! | Command option type | Provided implementations               |
 //! |---------------------|----------------------------------------|
-//! | `STRING`            | [`String`]                             |
+//! | `STRING`            | [`String`], [`Cow`]                    |
 //! | `INTEGER`           | [`i64`]                                |
 //! | `NUMBER`            | [`Number`], [`f64`]                    |
 //! | `BOOLEAN`           | [`bool`]                               |
@@ -44,6 +71,7 @@
 //!
 //! [`from_interaction`]: CommandModel::from_interaction
 //!
+//! [`Cow`]: std::borrow::Cow
 //! [`Number`]: twilight_model::application::command::Number
 //! [`User`]: twilight_model::user::User
 //! [`UserId`]: twilight_model::id::UserId
@@ -61,12 +89,13 @@ mod create_command;
 #[doc(hidden)]
 pub mod internal;
 
-pub use command_model::{CommandInputData, CommandModel, CommandOption, ResolvedUser};
+pub use command_model::{
+    AutocompleteValue, CommandInputData, CommandModel, CommandOption, ResolvedUser,
+};
 pub use create_command::{
     ApplicationCommandData, CommandOptionExt, CommandOptionExtInner, CreateCommand, CreateOption,
     OptionsCommandOptionDataExt,
 };
-
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 pub use twilight_interactions_derive::{CommandModel, CommandOption, CreateCommand, CreateOption};

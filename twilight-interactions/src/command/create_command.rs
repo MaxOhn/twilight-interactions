@@ -1,15 +1,15 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use twilight_model::{
     application::{
         command::{
             BaseCommandOptionData, ChannelCommandOptionData, ChoiceCommandOptionData, Command,
-            CommandOption, CommandType, Number, NumberCommandOptionData, OptionsCommandOptionData,
+            CommandOption, CommandType, NumberCommandOptionData, OptionsCommandOptionData,
         },
         interaction::application_command::InteractionChannel,
     },
     channel::Attachment,
-    guild::Role,
+    guild::{Permissions, Role},
     id::{
         marker::{AttachmentMarker, ChannelMarker, GenericMarker, RoleMarker, UserMarker},
         Id,
@@ -25,58 +25,64 @@ use super::{internal::CreateOptionData, ResolvedUser};
 /// macro is provided to automatically implement the traits.
 ///
 /// ## Types and fields documentation
-/// The trait can be derived structs where all fields implement [`CreateOption`]
-/// (see the [module documentation](crate::command) for a list of supported types)
-/// or enums where variants implements [`CreateCommand`].
+/// The trait can be derived on structs whose fields implement [`CreateOption`]
+/// (see the [module documentation](crate::command) for a list of supported
+/// types) or enums whose variants implement [`CreateCommand`].
 ///
-/// Unlike the [`CommandModel`] trait, the type its field or variants must have
-/// a description. The description correspond either to the first line of the
-/// documentation comment, or the value of the `desc` attribute. The type must
-/// also be named with the `name` attribute.
+/// Unlike the [`CommandModel`] trait, all fields or variants of the type it's
+/// implemented on must have a description. The description corresponds either
+/// to the first line of the documentation comment or the value of the `desc`
+/// attribute. The type must also be named with the `name` attribute.
 ///
 /// ## Example
 /// ```
+/// # use twilight_model::guild::Permissions;
 /// use twilight_interactions::command::{CreateCommand, ResolvedUser};
 ///
 /// #[derive(CreateCommand)]
-/// #[command(name = "hello", desc = "Say hello")]
+/// #[command(
+///     name = "hello",
+///     desc = "Say hello",
+///     default_permissions = "hello_permissions"
+/// )]
 /// struct HelloCommand {
 ///     /// The message to send.
 ///     message: String,
 ///     /// The user to send the message to.
 ///     user: Option<ResolvedUser>,
+/// }
+///
+/// fn hello_permissions() -> Permissions {
+///     Permissions::SEND_MESSAGES
 /// }
 /// ```
 ///
 /// ## Macro attributes
-/// The macro provide a `#[command]` attribute to provide additional information.
+/// The macro provides a `#[command]` attribute to provide additional
+/// information.
 ///
-/// | Attribute                | Type           | Location               | Description                                                     |
-/// |--------------------------|----------------|------------------------|-----------------------------------------------------------------|
-/// | `name`                   | `str`          | Type                   | Name of the command (required).                                 |
-/// | `desc`                   | `str`          | Type / Field / Variant | Set the subcommand name (required).                             |
-/// | `default_permission`     | `bool`         | Type                   | Whether the command should be enabled by default.               |
-/// | `rename`                 | `str`          | Field                  | Use a different option name than the field name.                |
-/// | `autocomplete`           | `bool`         | Field                  | Enable autocomplete on this field.                              |
-/// | `channel_types`          | `str`          | Field                  | Restricts the channel choice to specific types.[^channel_types] |
-/// | `max_value`, `min_value` | `i64` or `f64` | Field                  | Set the maximum and/or minimum value permitted.                 |
+/// | Attribute                  | Type                | Location               | Description                                                     |
+/// |----------------------------|---------------------|------------------------|-----------------------------------------------------------------|
+/// | `name`                     | `str`               | Type                   | Name of the command (required).                                 |
+/// | `desc`                     | `str`               | Type / Field / Variant | Description of the command (required).                          |
+/// | `default_permissions`      | `fn`[^perms]        | Type                   | Default permissions required by members to run the command.     |
+/// | `dm_permission`            | `bool`              | Type                   | Whether the command can be run in DMs.                          |
+/// | `rename`                   | `str`               | Field                  | Use a different option name than the field name.                |
+/// | `name_localizations`       | `fn`[^localization] | Type / Field / Variant | Localized name of the command (optional).                       |
+/// | `desc_localizations`       | `fn`[^localization] | Type / Field / Variant | Localized description of the command (optional).                |
+/// | `autocomplete`             | `bool`              | Field                  | Enable autocomplete on this field.                              |
+/// | `channel_types`            | `str`               | Field                  | Restricts the channel choice to specific types.[^channel_types] |
+/// | `max_value`, `min_value`   | `i64` or `f64`      | Field                  | Set the maximum and/or minimum value permitted.                 |
+/// | `max_length`, `min_length` | `u16`               | Field                  |   Maximum and/or minimum string length permitted.               |
 ///
-/// ## Example
-/// ```
-/// use twilight_interactions::command::{CreateCommand, ResolvedUser};
+/// [^perms]: Path to a function that returns [`Permissions`].
 ///
-/// #[derive(CreateCommand)]
-/// #[command(name = "hello", desc = "Say hello")]
-/// struct HelloCommand {
-///     /// The message to send.
-///     message: String,
-///     /// The user to send the message to.
-///     user: Option<ResolvedUser>,
-/// }
-/// ```
+/// [^localization]: Path to a function that returns a type that implements
+/// `IntoIterator<Item = (ToString, ToString)>`. See the module documentation to
+/// learn more.
 ///
-/// [^channel_types]: List [`ChannelType`] names in snake_case separated by spaces
-///                   like `guild_text private`.
+/// [^channel_types]: List of [`ChannelType`] names in snake_case separated by spaces
+/// like `guild_text private`.
 ///
 /// [`CommandModel`]: super::CommandModel
 /// [`ChannelType`]: twilight_model::channel::ChannelType
@@ -94,7 +100,6 @@ pub trait CreateCommand: Sized {
 /// by the derive macro. See the [module documentation](crate::command) for
 /// a list of implemented types.
 ///
-///
 /// ## Option choices
 /// This trait can be derived on enums to represent command options with
 /// predefined choices. The `#[option]` attribute must be present on each
@@ -111,17 +116,22 @@ pub trait CreateCommand: Sized {
 ///     #[option(name = "Hour", value = 3600)]
 ///     Hour,
 ///     #[option(name = "Day", value = 86400)]
-///     Day
+///     Day,
 /// }
 /// ```
 ///
 /// ### Macro attributes
-/// The macro provide a `#[option]` attribute to configure the generated code.
+/// The macro provides an `#[option]` attribute to configure the generated code.
 ///
-/// | Attribute | Type                  | Location | Description                                |
-/// |-----------|-----------------------|----------|--------------------------------------------|
-/// | `name`    | `str`                 | Variant  | Set the name of the command option choice. |
-/// | `value`   | `str`, `i64` or `f64` | Variant  | Value of the command option choice.        |
+/// | Attribute            | Type                  | Location | Description                                  |
+/// |----------------------|-----------------------|----------|----------------------------------------------|
+/// | `name`               | `str`                 | Variant  | Set the name of the command option choice.   |
+/// | `name_localizations` | `fn`[^localization]   | Variant  | Localized name of the command option choice. |
+/// | `value`              | `str`, `i64` or `f64` | Variant  | Value of the command option choice.          |
+///
+/// [^localization]: Path to a function that returns a type that implements
+///                  `IntoIterator<Item = (ToString, ToString)>`. See the
+///                  [module documentation](crate::command) to learn more.
 
 pub trait CreateOption: Sized {
     /// Create a [`CommandOption`] from this type.
@@ -130,7 +140,7 @@ pub trait CreateOption: Sized {
 
 /// Wrapper for [`CommandOption`](twilight_model::application::command::CommandOption)
 /// to allow more fields.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CommandOptionExt {
     /// The actual [`CommandOption`](twilight_model::application::command::CommandOption).
     pub inner: CommandOptionExtInner,
@@ -140,7 +150,7 @@ pub struct CommandOptionExt {
 
 /// Inner option for [`CommandOptionExt`] to distinguish
 /// between [`CommandOption`]'s variants for subcommands(groups).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CommandOptionExtInner {
     SubCommand(OptionsCommandOptionDataExt),
     SubCommandGroup(OptionsCommandOptionDataExt),
@@ -173,7 +183,7 @@ impl CommandOptionExtInner {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OptionsCommandOptionDataExt {
     /// Description of the option. It must be 100 characters or less.
     pub description: String,
@@ -189,6 +199,8 @@ impl From<OptionsCommandOptionDataExt> for OptionsCommandOptionData {
             description: o.description,
             name: o.name,
             options: o.options.into_iter().map(CommandOption::from).collect(),
+            description_localizations: None,
+            name_localizations: None,
         }
     }
 }
@@ -217,22 +229,30 @@ impl From<CommandOptionExt> for CommandOption {
     }
 }
 
-/// Data sent to discord to create a command.
+/// Data sent to Discord to create a command.
 ///
 /// This type is used in the [`CreateCommand`] trait.
 /// To convert it into a [`Command`], use the [From] (or [Into]) trait.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ApplicationCommandData {
     /// Name of the command. It must be 32 characters or less.
     pub name: String,
-    /// Description of the option. It must be 100 characters or less.
+    /// Localization dictionary for the command name. Keys must be valid
+    /// locales.
+    pub name_localizations: Option<HashMap<String, String>>,
+    /// Description of the command. It must be 100 characters or less.
     pub description: String,
+    /// Localization dictionary for the command description. Keys must be valid
+    /// locales.
+    pub description_localizations: Option<HashMap<String, String>>,
     /// Optional help string. Must not be empty.
     pub help: Option<String>,
     /// List of command options.
     pub options: Vec<CommandOptionExt>,
-    /// Whether the command is enabled by default when the app is added to a guild.
-    pub default_permission: bool,
+    /// Whether the command is available in DMs.
+    pub dm_permission: Option<bool>,
+    /// Default permissions required for a member to run the command.
+    pub default_member_permissions: Option<Permissions>,
     /// Whether the command is a subcommand group.
     pub group: bool,
 }
@@ -243,8 +263,11 @@ impl From<ApplicationCommandData> for Command {
             application_id: None,
             guild_id: None,
             name: item.name,
-            default_permission: Some(item.default_permission),
+            name_localizations: item.name_localizations,
+            default_member_permissions: item.default_member_permissions,
+            dm_permission: item.dm_permission,
             description: item.description,
+            description_localizations: item.description_localizations,
             id: None,
             kind: CommandType::ChatInput,
             options: item.options.into_iter().map(CommandOption::from).collect(),
@@ -257,7 +280,9 @@ impl From<ApplicationCommandData> for CommandOption {
     fn from(item: ApplicationCommandData) -> Self {
         let data = OptionsCommandOptionData {
             description: item.description,
+            description_localizations: item.description_localizations,
             name: item.name,
+            name_localizations: item.name_localizations,
             options: item.options.into_iter().map(CommandOption::from).collect(),
         };
 
@@ -330,17 +355,6 @@ macro_rules! impl_for_int {
 }
 
 impl_for_int!(u8, u16, u32, u64, usize, i8, i16, i32, i64, isize);
-
-impl CreateOption for Number {
-    fn create_option(data: CreateOptionData) -> CommandOptionExt {
-        let (opt, help) = data.into_number(Vec::new());
-
-        CommandOptionExt {
-            inner: CommandOptionExtInner::Number(opt),
-            help,
-        }
-    }
-}
 
 impl CreateOption for f64 {
     fn create_option(data: CreateOptionData) -> CommandOptionExt {
