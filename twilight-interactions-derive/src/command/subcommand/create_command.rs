@@ -42,6 +42,10 @@ pub fn impl_create_command(
         Some(dm_permission) => quote! { ::std::option::Option::Some(#dm_permission)},
         None => quote! { ::std::option::Option::None },
     };
+    let nsfw = match &attribute.nsfw {
+        Some(nsfw) => quote! { ::std::option::Option::Some(#nsfw) },
+        None => quote! { std::option::Option::None },
+    };
 
     let help = match attribute.help {
         Some(help) => quote! { Some(#help.to_owned()) },
@@ -68,6 +72,7 @@ pub fn impl_create_command(
                     options: command_options,
                     default_member_permissions: #default_permissions,
                     dm_permission: #dm_permission,
+                    nsfw: #nsfw,
                     group: true,
                 }
             }

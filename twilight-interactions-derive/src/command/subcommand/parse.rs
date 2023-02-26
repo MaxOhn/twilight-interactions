@@ -111,6 +111,8 @@ pub struct TypeAttribute {
     pub dm_permission: Option<bool>,
     /// Optional help
     pub help: Option<String>,
+    /// Whether the command is nsfw.
+    pub nsfw: Option<bool>,
 }
 
 impl TypeAttribute {
@@ -127,6 +129,7 @@ impl TypeAttribute {
                 "default_permissions",
                 "dm_permission",
                 "help",
+                "nsfw",
             ],
         )?;
 
@@ -152,6 +155,7 @@ impl TypeAttribute {
             .map(|v| v.parse_bool())
             .transpose()?;
         let help = attrs.get("help").map(parse_help).transpose()?;
+        let nsfw = attrs.get("nsfw").map(|v| v.parse_bool()).transpose()?;
 
         Ok(Self {
             name,
@@ -161,6 +165,7 @@ impl TypeAttribute {
             default_permissions,
             dm_permission,
             help,
+            nsfw,
         })
     }
 }

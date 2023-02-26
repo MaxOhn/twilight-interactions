@@ -8,12 +8,11 @@
 use std::collections::HashMap;
 
 use twilight_model::{
-    application::command::{
-        BaseCommandOptionData, ChannelCommandOptionData, ChoiceCommandOptionData,
-        CommandOptionChoice, CommandOptionValue, NumberCommandOptionData,
-    },
+    application::command::{CommandOptionChoice, CommandOptionType, CommandOptionValue},
     channel::ChannelType,
 };
+
+use super::{CommandOptionExt, CommandOptionExtInner};
 
 /// Convert a type to [`HashMap<String, String>`].
 ///
@@ -32,7 +31,8 @@ where
 
 /// Data to create a command option from.
 ///
-/// This type is used in the [`CreateOption`] trait.
+/// This type is used in the [`CreateOption`] trait and contains a subset of
+/// twilight's [`CommandOption`] fields.
 ///
 /// [`CreateOption`]: super::CreateOption
 #[derive(Debug, Clone, PartialEq)]
@@ -49,7 +49,7 @@ pub struct CreateOptionData {
     /// Optional help. Must not be empty.
     pub help: Option<String>,
     /// Whether the option is required to be completed by a user.
-    pub required: bool,
+    pub required: Option<bool>,
     /// Whether the command supports autocomplete. Only for `STRING`, `INTEGER`
     /// and `NUMBER` option types.
     pub autocomplete: bool,
@@ -68,7 +68,7 @@ pub struct CreateOptionData {
 pub struct CommandOptionData {
     /// Restricts the channel choice to specific types. Only for `CHANNEL`
     /// option type.
-    pub channel_types: Vec<ChannelType>,
+    pub channel_types: Option<Vec<ChannelType>>,
     /// Maximum value permitted. Only for `INTEGER` and `NUMBER` option types.
     pub max_value: Option<CommandOptionValue>,
     /// Minimum value permitted. Only for `INTEGER` and `NUMBER` option types.
@@ -79,75 +79,71 @@ pub struct CommandOptionData {
     pub min_length: Option<u16>,
 }
 
+/// Builder to convert a [`CreateOptionData`] into a [`CommandOption`].
+pub struct CreateOptionBuilder {
+    kind: CommandOptionType,
+    option: CreateOptionData,
+    choices: Option<Vec<CommandOptionChoice>>,
+    options: Option<Vec<CommandOptionExt>>,
+}
+
+impl CreateOptionBuilder {
+    /// Create a new [`CreateOptionBuilder`].
+    pub fn new(option: CreateOptionData, kind: CommandOptionType) -> Self {
+        Self {
+            kind,
+            option,
+            choices: None,
+            options: None,
+        }
+    }
+
+    /// Set the option choices.
+    pub fn choices(mut self, choices: Vec<CommandOptionChoice>) -> Self {
+        self.choices = Some(choices);
+
+        self
+    }
+
+    /// Set the subcommand options.
+    pub fn options(mut self, options: Vec<CommandOptionExt>) -> Self {
+        self.options = Some(options);
+
+        self
+    }
+
+    /// Build the [`CommandOption`].
+    pub fn build(self) -> CommandOptionExt {
+        CommandOptionExt {
+            inner: CommandOptionExtInner {
+                autocomplete: Some(self.option.autocomplete),
+                channel_types: self.option.data.channel_types,
+                choices: self.choices,
+                description: self.option.description,
+                description_localizations: self.option.description_localizations,
+                kind: self.kind,
+                max_length: self.option.data.max_length,
+                max_value: self.option.data.max_value,
+                min_length: self.option.data.min_length,
+                min_value: self.option.data.min_value,
+                name: self.option.name,
+                name_localizations: self.option.name_localizations,
+                options: self.options,
+                required: self.option.required,
+            },
+            help: self.option.help,
+        }
+    }
+}
+
 impl CreateOptionData {
-    /// Conversion into a [`BaseCommandOptionData`]
-    pub fn into_data(self) -> (BaseCommandOptionData, Option<String>) {
-        (
-            BaseCommandOptionData {
-                description: self.description,
-                name: self.name,
-                required: self.required,
-                description_localizations: None,
-                name_localizations: None,
-            },
-            self.help,
-        )
+    /// Create a new [`CreateOptionBuilder`].
+    pub fn builder(self, kind: CommandOptionType) -> CreateOptionBuilder {
+        CreateOptionBuilder::new(self, kind)
     }
 
-    /// Conversion into a [`ChannelCommandOptionData`]
-    pub fn into_channel(self) -> (ChannelCommandOptionData, Option<String>) {
-        (
-            ChannelCommandOptionData {
-                channel_types: self.data.channel_types,
-                description: self.description,
-                name: self.name,
-                required: self.required,
-                description_localizations: None,
-                name_localizations: None,
-            },
-            self.help,
-        )
-    }
-
-    /// Conversion into a [`ChoiceCommandOptionData`]
-    pub fn into_choice(
-        self,
-        choices: Vec<CommandOptionChoice>,
-    ) -> (ChoiceCommandOptionData, Option<String>) {
-        (
-            ChoiceCommandOptionData {
-                autocomplete: self.autocomplete,
-                choices,
-                description: self.description,
-                name: self.name,
-                required: self.required,
-                description_localizations: None,
-                max_length: self.data.max_length,
-                min_length: self.data.min_length,
-                name_localizations: None,
-            },
-            self.help,
-        )
-    }
-
-    /// Conversion into a [`NumberCommandOptionData`]
-    pub fn into_number(
-        self,
-        choices: Vec<CommandOptionChoice>,
-    ) -> (NumberCommandOptionData, Option<String>) {
-        (
-            NumberCommandOptionData {
-                autocomplete: self.autocomplete,
-                choices,
-                description: self.description,
-                max_value: self.data.max_value,
-                min_value: self.data.min_value,
-                name: self.name,
-                required: self.required,
-                description_localizations: None,
-                name_localizations: None,
-            },
-            self.help,
-        )
+    /// Convert the data into a [`CommandOption`].
+    pub fn into_option(self, kind: CommandOptionType) -> CommandOptionExt {
+        self.builder(kind).build()
     }
 }

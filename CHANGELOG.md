@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2023-02-07
+### Changed
+- Updated to `twilight-model` 0.15.0. (@randomairborne)
+
+## [0.14.4] - 2023-01-14
+### Added
+- `GuildDirectory` and `GuildForum` channel types. (@CircuitSacul)
+
+## [0.14.3] - 2023-01-08
+### Added
+- Support age-restricted commands with the `nsfw` attribute.
+
+### Fixed
+- Fixed compilation errors with `twilight-model` 0.14.1 and above.
+
+## [0.14.2] - 2022-11-27
+### Fixed
+- Use new `ChannelType` variant names.
+
+## [0.14.1] - 2022-11-21
+### Fixed
+- Set `required` to `None` on subcommand and subcommand group options.
+
+## [0.14.0] - 2022-11-16
+### Changed
+- Upgraded to `twilight-model` 0.14.
+- MSRV bumped to 1.64.
+
 ## [0.13.0] - 2022-08-15
 ### Changed
 - Upgraded to `twilight-model` 0.13.
@@ -15,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Number` type has been removed in twilight-model, use `f64` instead.
 
 ## [0.12.0] - 2022-07-17
-## Added
+### Added
 - Support for autocomplete interactions with `AutocompleteValue`.
 - Added `max_length` and `max_length` attributes for `String` fields.
 
@@ -66,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved validation of command names.
 
 ### Fixed
-- `ParseError::EmptyOption` is only returned when parsing subcommands.  
+- `ParseError::EmptyOption` is only returned when parsing subcommands.
    This fixes command models without options or with only optional options.
 
 ## [0.8.0] - 2021-12-12
@@ -102,7 +130,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release of `twilight-interactions` and `twilight-interactions-derive` crates.
 
-[Unreleased]: https://github.com/baptiste0928/twilight-interactions/compare/v0.13.0...main
+[Unreleased]: https://github.com/baptiste0928/twilight-interactions/compare/v0.15.0...main
+[0.15.0]: https://github.com/baptiste0928/twilight-interactions/compare/v0.14.4...v0.15.0
+[0.14.4]: https://github.com/baptiste0928/twilight-interactions/compare/v0.14.3...v0.14.4
+[0.14.3]: https://github.com/baptiste0928/twilight-interactions/compare/v0.14.2...v0.14.3
+[0.14.2]: https://github.com/baptiste0928/twilight-interactions/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/baptiste0928/twilight-interactions/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/baptiste0928/twilight-interactions/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/baptiste0928/twilight-interactions/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/baptiste0928/twilight-interactions/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/baptiste0928/twilight-interactions/compare/v0.10.1...v0.11.0

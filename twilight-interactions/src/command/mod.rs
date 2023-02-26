@@ -93,7 +93,6 @@ pub use command_model::{
 };
 pub use create_command::{
     ApplicationCommandData, CommandOptionExt, CommandOptionExtInner, CreateCommand, CreateOption,
-    OptionsCommandOptionDataExt,
 };
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
