@@ -55,6 +55,10 @@ pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> R
         Some(dm_permission) => quote! { ::std::option::Option::Some(#dm_permission)},
         None => quote! { ::std::option::Option::None },
     };
+    let nsfw = match &attributes.nsfw {
+        Some(nsfw) => quote! { ::std::option::Option::Some(#nsfw) },
+        None => quote! { ::std::option::Option::None },
+    };
 
     let help = match attributes.help {
         Some(help) => quote! { Some(#help.to_owned()) },
@@ -84,6 +88,7 @@ pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> R
                     options: command_options,
                     default_member_permissions: #default_permissions,
                     dm_permission: #dm_permission,
+                    nsfw: #nsfw,
                     group: false,
                 }
             }
@@ -111,11 +116,17 @@ fn field_option(field: &StructField) -> Result<TokenStream> {
     let description_localizations = localization_field(&field.attributes.desc_localizations);
     let required = field.kind.required();
     let autocomplete = field.attributes.autocomplete;
-    let channel_types = field.attributes.channel_types.iter().map(channel_type);
     let max_value = command_option_value(field.attributes.max_value);
     let min_value = command_option_value(field.attributes.min_value);
     let max_length = optional(field.attributes.max_length);
     let min_length = optional(field.attributes.min_length);
+
+    let channel_types = if field.attributes.channel_types.is_empty() {
+        quote! { ::std::option::Option::None }
+    } else {
+        let items = field.attributes.channel_types.iter().map(channel_type);
+        quote! { ::std::option::Option::Some(::std::vec![#(#items),*]) }
+    };
 
     Ok(quote_spanned! {span=>
         command_options.push(<#ty as ::twilight_interactions::command::CreateOption>::create_option(
@@ -125,10 +136,10 @@ fn field_option(field: &StructField) -> Result<TokenStream> {
                 description: ::std::convert::From::from(#description),
                 description_localizations: #description_localizations,
                 help: #help,
-                required: #required,
+                required: ::std::option::Option::Some(#required),
                 autocomplete: #autocomplete,
                 data: ::twilight_interactions::command::internal::CommandOptionData {
-                    channel_types: ::std::vec![#(#channel_types),*],
+                    channel_types: #channel_types,
                     max_value: #max_value,
                     min_value: #min_value,
                     max_length: #max_length,

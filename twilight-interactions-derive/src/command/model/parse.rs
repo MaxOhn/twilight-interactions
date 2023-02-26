@@ -94,6 +94,8 @@ pub struct TypeAttribute {
     pub dm_permission: Option<bool>,
     /// Optional help
     pub help: Option<String>,
+    /// Whether the command is nsfw.
+    pub nsfw: Option<bool>,
 }
 
 impl TypeAttribute {
@@ -111,6 +113,7 @@ impl TypeAttribute {
                 "default_permissions",
                 "dm_permission",
                 "help",
+                "nsfw",
             ],
         )?;
 
@@ -137,6 +140,7 @@ impl TypeAttribute {
             .map(|v| v.parse_bool())
             .transpose()?;
         let help = attrs.get("help").map(parse_help).transpose()?;
+        let nsfw = attrs.get("nsfw").map(|v| v.parse_bool()).transpose()?;
 
         Ok(Self {
             autocomplete,
@@ -147,6 +151,7 @@ impl TypeAttribute {
             default_permissions,
             dm_permission,
             help,
+            nsfw,
         })
     }
 }
@@ -267,12 +272,14 @@ pub enum ChannelType {
     GuildVoice,
     Group,
     GuildCategory,
-    GuildNews,
+    GuildAnnouncement,
     GuildStore,
-    GuildNewsThread,
-    GuildPublicThread,
-    GuildPrivateThread,
+    AnnouncementThread,
+    PublicThread,
+    PrivateThread,
     GuildStageVoice,
+    GuildDirectory,
+    GuildForum,
 }
 
 impl ChannelType {
@@ -294,15 +301,17 @@ impl ChannelType {
             "guild_voice" => Ok(Self::GuildVoice),
             "group" => Ok(Self::Group),
             "guild_category" => Ok(Self::GuildCategory),
-            "guild_news" => Ok(Self::GuildNews),
+            "guild_announcement" | "guild_news" => Ok(Self::GuildAnnouncement),
             "guild_store" => Ok(Self::GuildStore),
-            "guild_news_thread" => Ok(Self::GuildNewsThread),
-            "guild_public_thread" => Ok(Self::GuildPublicThread),
-            "guild_private_thread" => Ok(Self::GuildPrivateThread),
+            "announcement_thread" | "guild_news_thread" => Ok(Self::AnnouncementThread),
+            "public_thread" | "guild_public_thread" => Ok(Self::PublicThread),
+            "private_thread" | "guild_private_thread" => Ok(Self::PrivateThread),
             "guild_stage_voice" => Ok(Self::GuildStageVoice),
+            "guild_directory" => Ok(Self::GuildDirectory),
+            "guild_forum" => Ok(Self::GuildForum),
             invalid => Err(Error::new(
                 span,
-                format!("`{}` is not a valid channel type", invalid),
+                format!("`{invalid}` is not a valid channel type"),
             )),
         }
     }
@@ -337,20 +346,26 @@ pub fn channel_type(kind: &ChannelType) -> TokenStream {
         ChannelType::GuildVoice => quote!(::twilight_model::channel::ChannelType::GuildVoice),
         ChannelType::Group => quote!(::twilight_model::channel::ChannelType::Group),
         ChannelType::GuildCategory => quote!(::twilight_model::channel::ChannelType::GuildCategory),
-        ChannelType::GuildNews => quote!(::twilight_model::channel::ChannelType::GuildNews),
+        ChannelType::GuildAnnouncement => {
+            quote!(::twilight_model::channel::ChannelType::GuildAnnouncement)
+        }
         ChannelType::GuildStore => quote!(::twilight_model::channel::ChannelType::GuildStore),
-        ChannelType::GuildNewsThread => {
-            quote!(::twilight_model::channel::ChannelType::GuildNewsThread)
+        ChannelType::AnnouncementThread => {
+            quote!(::twilight_model::channel::ChannelType::AnnouncementThread)
         }
-        ChannelType::GuildPublicThread => {
-            quote!(::twilight_model::channel::ChannelType::GuildPublicThread)
+        ChannelType::PublicThread => {
+            quote!(::twilight_model::channel::ChannelType::PublicThread)
         }
-        ChannelType::GuildPrivateThread => {
-            quote!(::twilight_model::channel::ChannelType::GuildPrivateThread)
+        ChannelType::PrivateThread => {
+            quote!(::twilight_model::channel::ChannelType::PrivateThread)
         }
         ChannelType::GuildStageVoice => {
             quote!(::twilight_model::channel::ChannelType::GuildStageVoice)
         }
+        ChannelType::GuildDirectory => {
+            quote!(::twilight_model::channel::ChannelType::GuildDirectory)
+        }
+        ChannelType::GuildForum => quote!(::twilight_model::channel::ChannelType::GuildForum),
     }
 }
 
