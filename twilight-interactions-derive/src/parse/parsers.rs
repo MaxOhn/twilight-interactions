@@ -77,6 +77,31 @@ impl From<CommandName> for String {
     }
 }
 
+/// Slash command or command option help.
+///
+/// This validate that the help is between 1 and `N` characters.
+pub struct CommandHelp<const N: usize>(String);
+
+impl<const N: usize> ParseAttribute for CommandHelp<N> {
+    fn parse_attribute(input: Lit) -> Result<Self> {
+        let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
+        let value = spanned.inner.trim();
+
+        match value.chars().count() {
+            n if (1..=N).contains(&n) => (),
+            _ => return Err(spanned.error(format!("help must be between 1 and {N} characters"))),
+        }
+
+        Ok(Self(value.to_owned()))
+    }
+}
+
+impl<const N: usize> ToTokens for CommandHelp<N> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens)
+    }
+}
+
 /// Slash command or command option description.
 ///
 /// This validate that the description is between 1 and 100 characters.

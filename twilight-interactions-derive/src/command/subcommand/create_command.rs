@@ -43,6 +43,7 @@ pub fn impl_create_command(
     };
     let dm_permission = optional(attributes.dm_permission);
     let nsfw = optional(attributes.nsfw);
+    let help = optional(attributes.help);
 
     let variant_options = variants.iter().map(variant_option);
 
@@ -76,6 +77,7 @@ pub fn impl_create_command(
                     name_localizations: __command_name.localizations,
                     description: __command_desc.fallback,
                     description_localizations: __command_desc.localizations,
+                    help: #help,
                     options: __command_options,
                     default_member_permissions: #default_permissions,
                     dm_permission: #dm_permission,

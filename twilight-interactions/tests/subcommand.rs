@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
 use twilight_interactions::command::{
-    ApplicationCommandData, CommandInputData, CommandModel, CreateCommand, DescLocalizations,
+    ApplicationCommandData, CommandInputData, CommandModel, CommandOptionExtended, CreateCommand,
+    DescLocalizations,
 };
 use twilight_model::{
     application::{
-        command::{CommandOption, CommandOptionType},
+        command::CommandOptionType,
         interaction::application_command::{CommandDataOption, CommandOptionValue},
     },
     guild::Permissions,
@@ -33,7 +34,7 @@ struct CommandThree {
 }
 
 #[derive(CommandModel, CreateCommand, Debug, PartialEq, Eq)]
-#[command(name = "group", desc = "Command group")]
+#[command(name = "group", desc = "Command group", help = "Group help")]
 enum SubCommandGroup {
     #[command(name = "two")]
     Two(CommandTwo),
@@ -123,7 +124,7 @@ fn test_subcommand_group_model() {
 
 #[test]
 fn test_create_subcommand() {
-    let command_options = vec![CommandOption {
+    let command_options = vec![CommandOptionExtended {
         autocomplete: Some(false),
         channel_types: None,
         choices: None,
@@ -136,12 +137,13 @@ fn test_create_subcommand() {
         min_value: None,
         name: "option".into(),
         name_localizations: None,
+        help: None,
         options: None,
         required: Some(true),
     }];
 
     let subcommand_group = vec![
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -154,10 +156,11 @@ fn test_create_subcommand() {
             min_value: None,
             name: "two".into(),
             name_localizations: None,
+            help: None,
             options: Some(command_options.clone()),
             required: None,
         },
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -170,13 +173,14 @@ fn test_create_subcommand() {
             min_value: None,
             name: "three".into(),
             name_localizations: None,
+            help: None,
             options: Some(command_options.clone()),
             required: None,
         },
     ];
 
     let subcommand = vec![
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -189,10 +193,11 @@ fn test_create_subcommand() {
             min_value: None,
             name: "one".into(),
             name_localizations: None,
+            help: None,
             options: Some(command_options),
             required: None,
         },
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -205,6 +210,7 @@ fn test_create_subcommand() {
             min_value: None,
             name: "group".into(),
             name_localizations: None,
+            help: Some("Group help"),
             options: Some(subcommand_group),
             required: None,
         },
@@ -216,6 +222,7 @@ fn test_create_subcommand() {
         name_localizations: None,
         description: "fallback".into(),
         description_localizations: Some(HashMap::from([("en".into(), "en description".into())])),
+        help: None,
         options: subcommand,
         default_member_permissions: Some(Permissions::empty()),
         dm_permission: None,

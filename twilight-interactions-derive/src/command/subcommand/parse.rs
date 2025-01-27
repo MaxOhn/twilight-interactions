@@ -5,7 +5,7 @@ use crate::{
     command::user_application::{ApplicationIntegrationType, InteractionContextType},
     parse::{
         attribute::NamedAttrs,
-        parsers::{CommandDescription, CommandName, FunctionPath},
+        parsers::{CommandDescription, CommandHelp, CommandName, FunctionPath},
         syntax::find_attr,
     },
 };
@@ -116,6 +116,8 @@ pub struct TypeAttribute {
     pub contexts: Option<Vec<InteractionContextType>>,
     /// Installation contexts where the command is available.
     pub integration_types: Option<Vec<ApplicationIntegrationType>>,
+    /// Command help.
+    pub help: Option<CommandHelp<4096>>,
 }
 
 impl TypeAttribute {
@@ -129,6 +131,7 @@ impl TypeAttribute {
         "nsfw",
         "contexts",
         "integration_types",
+        "help",
     ];
 
     pub fn parse(attr: &Attribute) -> Result<Self> {
@@ -144,6 +147,7 @@ impl TypeAttribute {
             nsfw: parser.optional("nsfw")?,
             contexts: parser.optional("contexts")?,
             integration_types: parser.optional("integration_types")?,
+            help: parser.optional("help")?,
         })
     }
 }

@@ -8,13 +8,11 @@
 use std::collections::HashMap;
 
 use twilight_model::{
-    application::command::{
-        CommandOption, CommandOptionChoice, CommandOptionType, CommandOptionValue,
-    },
+    application::command::{CommandOptionChoice, CommandOptionType, CommandOptionValue},
     channel::ChannelType,
 };
 
-use super::{DescLocalizations, NameLocalizations};
+use super::{create_command::CommandOptionExtended, DescLocalizations, NameLocalizations};
 
 /// Internal representation of localization types ([`NameLocalizations`] and
 /// [`DescLocalizations`]).
@@ -73,6 +71,8 @@ pub struct CreateOptionData {
     /// Localization dictionary for the option description. Keys must be valid
     /// locales.
     pub description_localizations: Option<HashMap<String, String>>,
+    /// Optional help. Must not be empty.
+    pub help: Option<&'static str>,
     /// Whether the option is required to be completed by a user.
     pub required: Option<bool>,
     /// Whether the command supports autocomplete. Only for `STRING`, `INTEGER`
@@ -109,7 +109,7 @@ pub struct CreateOptionBuilder {
     kind: CommandOptionType,
     option: CreateOptionData,
     choices: Option<Vec<CommandOptionChoice>>,
-    options: Option<Vec<CommandOption>>,
+    options: Option<Vec<CommandOptionExtended>>,
 }
 
 impl CreateOptionBuilder {
@@ -131,15 +131,15 @@ impl CreateOptionBuilder {
     }
 
     /// Set the subcommand options.
-    pub fn options(mut self, options: Vec<CommandOption>) -> Self {
+    pub fn options(mut self, options: Vec<CommandOptionExtended>) -> Self {
         self.options = Some(options);
 
         self
     }
 
     /// Build the [`CommandOption`].
-    pub fn build(self) -> CommandOption {
-        CommandOption {
+    pub fn build(self) -> CommandOptionExtended {
+        CommandOptionExtended {
             autocomplete: Some(self.option.autocomplete),
             channel_types: self.option.data.channel_types,
             choices: self.choices,
@@ -152,6 +152,7 @@ impl CreateOptionBuilder {
             min_value: self.option.data.min_value,
             name: self.option.name,
             name_localizations: self.option.name_localizations,
+            help: self.option.help,
             options: self.options,
             required: self.option.required,
         }
@@ -165,7 +166,7 @@ impl CreateOptionData {
     }
 
     /// Convert the data into a [`CommandOption`].
-    pub fn into_option(self, kind: CommandOptionType) -> CommandOption {
+    pub fn into_option(self, kind: CommandOptionType) -> CommandOptionExtended {
         self.builder(kind).build()
     }
 }

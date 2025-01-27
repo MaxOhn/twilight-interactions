@@ -30,7 +30,7 @@ pub fn impl_create_option(input: DeriveInput) -> Result<TokenStream> {
         impl ::twilight_interactions::command::CreateOption for #ident {
             fn create_option(
                 __data: ::twilight_interactions::command::internal::CreateOptionData,
-            ) -> ::twilight_model::application::command::CommandOption {
+            ) -> ::twilight_interactions::command::CommandOptionExtended {
                 let mut __choices = ::std::vec::Vec::with_capacity(#vec_capacity);
 
                 #(#choice_variants)*

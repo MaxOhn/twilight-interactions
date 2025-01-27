@@ -70,6 +70,7 @@ fn test_command_option_string() {
         name_localizations: None,
         description: "description".to_string(),
         description_localizations: None,
+        help: None,
         required: Some(false),
         autocomplete: false,
         data,
@@ -108,7 +109,10 @@ fn test_command_option_string() {
         required: Some(false),
     };
 
-    assert_eq!(command_option, ChoiceString::create_option(create_data))
+    assert_eq!(
+        command_option,
+        ChoiceString::create_option(create_data).into()
+    );
 }
 
 #[test]
@@ -135,6 +139,7 @@ fn test_command_option_integer() {
         name_localizations: None,
         description: "description".to_string(),
         description_localizations: None,
+        help: None,
         required: Some(false),
         autocomplete: false,
         data,
@@ -173,7 +178,7 @@ fn test_command_option_integer() {
         required: Some(false),
     };
 
-    assert_eq!(command_option, ChoiceInt::create_option(create_data));
+    assert_eq!(command_option, ChoiceInt::create_option(create_data).into());
 }
 
 #[test]
@@ -200,6 +205,7 @@ fn test_command_option_number() {
         name_localizations: None,
         description: "description".to_string(),
         description_localizations: None,
+        help: None,
         required: Some(false),
         autocomplete: false,
         data,
@@ -238,5 +244,8 @@ fn test_command_option_number() {
         required: Some(false),
     };
 
-    assert_eq!(command_option, ChoiceNumber::create_option(create_data));
+    assert_eq!(
+        command_option,
+        ChoiceNumber::create_option(create_data).into()
+    );
 }

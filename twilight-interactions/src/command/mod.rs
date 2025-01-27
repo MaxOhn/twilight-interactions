@@ -121,7 +121,8 @@ pub use command_model::{
     ResolvedUser,
 };
 pub use create_command::{
-    ApplicationCommandData, CreateCommand, CreateOption, DescLocalizations, NameLocalizations,
+    ApplicationCommandData, CommandOptionExtended, CreateCommand, CreateOption, DescLocalizations,
+    NameLocalizations,
 };
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]

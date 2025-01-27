@@ -8,7 +8,7 @@ use crate::{
     command::user_application::{ApplicationIntegrationType, InteractionContextType},
     parse::{
         attribute::{NamedAttrs, ParseAttribute, ParseSpanned},
-        parsers::{CommandDescription, CommandName, FunctionPath},
+        parsers::{CommandDescription, CommandHelp, CommandName, FunctionPath},
         syntax::{extract_generic, find_attr},
     },
 };
@@ -109,6 +109,8 @@ pub struct TypeAttribute {
     pub contexts: Option<Vec<InteractionContextType>>,
     /// Installation contexts where the command is available.
     pub integration_types: Option<Vec<ApplicationIntegrationType>>,
+    /// Command help.
+    pub help: Option<CommandHelp<4096>>,
 }
 
 impl TypeAttribute {
@@ -123,6 +125,7 @@ impl TypeAttribute {
         "nsfw",
         "contexts",
         "integration_types",
+        "help",
     ];
 
     pub fn parse(attr: &Attribute) -> Result<Self> {
@@ -139,6 +142,7 @@ impl TypeAttribute {
             nsfw: parser.optional("nsfw")?,
             contexts: parser.optional("contexts")?,
             integration_types: parser.optional("integration_types")?,
+            help: parser.optional("help")?,
         })
     }
 }
@@ -166,6 +170,8 @@ pub struct FieldAttribute {
     pub max_length: Option<u16>,
     /// Minimum string length
     pub min_length: Option<u16>,
+    /// Overwrite the field help.
+    pub help: Option<CommandHelp<1024>>,
 }
 
 impl FieldAttribute {
@@ -180,6 +186,7 @@ impl FieldAttribute {
         "min_value",
         "max_length",
         "min_length",
+        "help",
     ];
 
     /// Parse a single [`Attribute`]
@@ -197,6 +204,7 @@ impl FieldAttribute {
             min_value: parser.optional("min_value")?,
             max_length: parser.optional("max_length")?,
             min_length: parser.optional("min_length")?,
+            help: parser.optional("help")?,
         })
     }
 

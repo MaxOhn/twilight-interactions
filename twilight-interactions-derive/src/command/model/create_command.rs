@@ -55,6 +55,7 @@ pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> R
     };
     let dm_permission = optional(attributes.dm_permission);
     let nsfw = optional(attributes.nsfw);
+    let help = optional(attributes.help);
 
     let field_options = fields
         .iter()
@@ -92,6 +93,7 @@ pub fn impl_create_command(input: DeriveInput, fields: Option<FieldsNamed>) -> R
                     name_localizations: __command_name.localizations,
                     description: __command_desc.fallback,
                     description_localizations: __command_desc.localizations,
+                    help: #help,
                     options: __command_options,
                     default_member_permissions: #default_permissions,
                     dm_permission: #dm_permission,
@@ -125,6 +127,7 @@ fn field_option(field: &StructField) -> Result<TokenStream> {
     let min_value = command_option_value(field.attributes.min_value);
     let max_length = optional(field.attributes.max_length);
     let min_length = optional(field.attributes.min_length);
+    let help = optional(field.attributes.help.as_ref());
 
     let channel_types = if field.attributes.channel_types.is_empty() {
         quote! { ::std::option::Option::None }
@@ -143,6 +146,7 @@ fn field_option(field: &StructField) -> Result<TokenStream> {
                 name_localizations: __field_name.localizations,
                 description: __field_desc.fallback,
                 description_localizations: __field_desc.localizations,
+                help: #help,
                 required: ::std::option::Option::Some(#required),
                 autocomplete: #autocomplete,
                 data: ::twilight_interactions::command::internal::CommandOptionData {

@@ -2,10 +2,12 @@ use std::{borrow::Cow, collections::HashMap};
 
 use twilight_model::{
     application::{
-        command::{Command, CommandOption, CommandOptionType, CommandType},
+        command::{
+            Command, CommandOptionChoice, CommandOptionType, CommandOptionValue, CommandType,
+        },
         interaction::{InteractionChannel, InteractionContextType},
     },
-    channel::Attachment,
+    channel::{Attachment, ChannelType},
     guild::{Permissions, Role},
     id::{
         marker::{AttachmentMarker, ChannelMarker, GenericMarker, RoleMarker, UserMarker},
@@ -152,7 +154,157 @@ impl<T: CreateCommand> CreateCommand for Box<T> {
 ///                  [module documentation](crate::command) to learn more.
 pub trait CreateOption: Sized {
     /// Create a [`CommandOption`] from this type.
-    fn create_option(data: CreateOptionData) -> CommandOption;
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended;
+}
+
+/// Same as [`twilight_model::application::command::CommandOption`] but with
+/// additional data.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CommandOptionExtended {
+    /// Whether the command supports autocomplete.
+    ///
+    /// Applicable for options of type [`Integer`], [`Number`], and [`String`].
+    ///
+    /// Defaults to `false`.
+    ///
+    /// **Note**: may not be set to `true` if `choices` are set.
+    ///
+    /// [`Integer`]: CommandOptionType::Integer
+    /// [`Number`]: CommandOptionType::Number
+    /// [`String`]: CommandOptionType::String
+    pub autocomplete: Option<bool>,
+    /// List of possible channel types users can select from.
+    ///
+    /// Applicable for options of type [`Channel`].
+    ///
+    /// Defaults to any channel type.
+    ///
+    /// [`Channel`]: CommandOptionType::Channel
+    pub channel_types: Option<Vec<ChannelType>>,
+    /// List of predetermined choices users can select from.
+    ///
+    /// Applicable for options of type [`Integer`], [`Number`], and [`String`].
+    ///
+    /// Defaults to no choices; users may input a value of their choice.
+    ///
+    /// Must be at most 25 options.
+    ///
+    /// **Note**: all choices must be of the same type.
+    ///
+    /// [`Integer`]: CommandOptionType::Integer
+    /// [`Number`]: CommandOptionType::Number
+    /// [`String`]: CommandOptionType::String
+    pub choices: Option<Vec<CommandOptionChoice>>,
+    /// Description of the option. Must be 100 characters or less.
+    pub description: String,
+    /// Localization dictionary for the [`description`] field.
+    ///
+    /// Defaults to no localizations.
+    ///
+    /// Keys must be valid locales and values must be 100 characters or less.
+    ///
+    /// [`description`]: Self::description
+    pub description_localizations: Option<HashMap<String, String>>,
+    /// Type of option.
+    pub kind: CommandOptionType,
+    /// Maximum allowed value length.
+    ///
+    /// Applicable for options of type [`String`].
+    ///
+    /// Defaults to `6000`.
+    ///
+    /// Must be at least `1` and at most `6000`.
+    ///
+    /// [`String`]: CommandOptionType::String
+    pub max_length: Option<u16>,
+    /// Maximum allowed value.
+    ///
+    /// Applicable for options of type [`Integer`] and [`Number`].
+    ///
+    /// Defaults to no maximum.
+    ///
+    /// [`Integer`]: CommandOptionType::Integer
+    /// [`Number`]: CommandOptionType::Number
+    pub max_value: Option<CommandOptionValue>,
+    /// Minimum allowed value length.
+    ///
+    /// Applicable for options of type [`String`].
+    ///
+    /// Defaults to `0`.
+    ///
+    /// Must be at most `6000`.
+    ///
+    /// [`String`]: CommandOptionType::String
+    pub min_length: Option<u16>,
+    /// Minimum allowed value.
+    ///
+    /// Applicable for options of type [`Integer`] and [`Number`].
+    ///
+    /// Defaults to no minimum.
+    ///
+    /// [`Integer`]: CommandOptionType::Integer
+    /// [`Number`]: CommandOptionType::Number
+    pub min_value: Option<CommandOptionValue>,
+    /// Name of the option. Must be 32 characters or less.
+    pub name: String,
+    /// Localization dictionary for the [`name`] field.
+    ///
+    /// Defaults to no localizations.
+    ///
+    /// Keys must be valid locales and values must be 32 characters or less.
+    ///
+    /// [`name`]: Self::name
+    pub name_localizations: Option<HashMap<String, String>>,
+    /// Additional optional help.
+    pub help: Option<&'static str>,
+    /// Nested options.
+    ///
+    /// Applicable for options of type [`SubCommand`] and [`SubCommandGroup`].
+    ///
+    /// Defaults to no options.
+    ///
+    /// **Note**: at least one option is required and [`SubCommandGroup`] may
+    /// only contain [`SubCommand`]s.
+    ///
+    /// See [Discord Docs/Subcommands and Subcommand Groups].
+    ///
+    /// [Discord Docs/Subcommands and Subcommand Groups]: https://discord.com/developers/docs/interactions/application-commands#subcommands-and-subcommand-groups
+    /// [`SubCommand`]: CommandOptionType::SubCommand
+    /// [`SubCommandGroup`]: CommandOptionType::SubCommandGroup
+    pub options: Option<Vec<CommandOptionExtended>>,
+    /// Whether the option is required.
+    ///
+    /// Applicable for all options except those of type [`SubCommand`] and
+    /// [`SubCommandGroup`].
+    ///
+    /// Defaults to `false`.
+    ///
+    /// [`SubCommand`]: CommandOptionType::SubCommand
+    /// [`SubCommandGroup`]: CommandOptionType::SubCommandGroup
+    pub required: Option<bool>,
+}
+
+impl From<CommandOptionExtended> for twilight_model::application::command::CommandOption {
+    fn from(option: CommandOptionExtended) -> Self {
+        Self {
+            autocomplete: option.autocomplete,
+            channel_types: option.channel_types,
+            choices: option.choices,
+            description: option.description,
+            description_localizations: option.description_localizations,
+            kind: option.kind,
+            max_length: option.max_length,
+            max_value: option.max_value,
+            min_length: option.min_length,
+            min_value: option.min_value,
+            name: option.name,
+            name_localizations: option.name_localizations,
+            options: option
+                .options
+                .map(|options| options.into_iter().map(From::from).collect()),
+            required: option.required,
+        }
+    }
 }
 
 /// Localization data for command names.
@@ -241,8 +393,10 @@ pub struct ApplicationCommandData {
     /// Localization dictionary for the command description. Keys must be valid
     /// locales.
     pub description_localizations: Option<HashMap<String, String>>,
+    /// Optional help string. Must not be empty.
+    pub help: Option<&'static str>,
     /// List of command options.
-    pub options: Vec<CommandOption>,
+    pub options: Vec<CommandOptionExtended>,
     /// Whether the command is available in DMs.
     #[deprecated(note = "use contexts instead")]
     pub dm_permission: Option<bool>,
@@ -273,7 +427,7 @@ impl From<ApplicationCommandData> for Command {
             id: None,
             kind: CommandType::ChatInput,
             nsfw: item.nsfw,
-            options: item.options,
+            options: item.options.into_iter().map(From::from).collect(),
             version: Id::new(1),
             contexts: item.contexts,
             integration_types: item.integration_types,
@@ -281,13 +435,14 @@ impl From<ApplicationCommandData> for Command {
     }
 }
 
-impl From<ApplicationCommandData> for CommandOption {
+impl From<ApplicationCommandData> for CommandOptionExtended {
     fn from(item: ApplicationCommandData) -> Self {
         let data = CreateOptionData {
             name: item.name,
             name_localizations: item.name_localizations,
             description: item.description,
             description_localizations: item.description_localizations,
+            help: item.help,
             required: None,
             autocomplete: false,
             data: Default::default(),
@@ -306,97 +461,97 @@ impl From<ApplicationCommandData> for CommandOption {
 }
 
 impl CreateOption for String {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::String)
     }
 }
 
 impl CreateOption for Cow<'_, str> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::String)
     }
 }
 
 impl CreateOption for i64 {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Integer)
     }
 }
 
 impl CreateOption for f64 {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Number)
     }
 }
 
 impl CreateOption for bool {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Boolean)
     }
 }
 
 impl CreateOption for Id<UserMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::User)
     }
 }
 
 impl CreateOption for Id<ChannelMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Channel)
     }
 }
 
 impl CreateOption for Id<RoleMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Role)
     }
 }
 
 impl CreateOption for Id<GenericMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Mentionable)
     }
 }
 
 impl CreateOption for Id<AttachmentMarker> {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Attachment)
     }
 }
 
 impl CreateOption for Attachment {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Attachment)
     }
 }
 
 impl CreateOption for User {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::User)
     }
 }
 
 impl CreateOption for ResolvedUser {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::User)
     }
 }
 
 impl CreateOption for ResolvedMentionable {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Mentionable)
     }
 }
 
 impl CreateOption for InteractionChannel {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Channel)
     }
 }
 
 impl CreateOption for Role {
-    fn create_option(data: CreateOptionData) -> CommandOption {
+    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Role)
     }
 }

@@ -1,12 +1,12 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use twilight_interactions::command::{
-    ApplicationCommandData, CreateCommand, CreateOption, DescLocalizations, NameLocalizations,
-    ResolvedUser,
+    ApplicationCommandData, CommandOptionExtended, CreateCommand, CreateOption, DescLocalizations,
+    NameLocalizations, ResolvedUser,
 };
 use twilight_model::{
     application::{
-        command::{CommandOption, CommandOptionType, CommandOptionValue},
+        command::{CommandOptionType, CommandOptionValue},
         interaction::{InteractionChannel, InteractionContextType},
     },
     channel::ChannelType,
@@ -62,13 +62,17 @@ fn demo_desc() -> DescLocalizations {
 }
 
 #[derive(CreateCommand, Debug, PartialEq, Eq)]
-#[command(name = "unit", desc = "Unit command for testing purposes")]
+#[command(
+    name = "unit",
+    desc = "Unit command for testing purposes",
+    help = "Unit command help"
+)]
 struct UnitCommand;
 
 #[test]
 fn test_create_command() {
     let options = vec![
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -81,10 +85,11 @@ fn test_create_command() {
             min_value: None,
             name: "member".into(),
             name_localizations: None,
+            help: None,
             options: None,
             required: Some(true),
         },
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -97,10 +102,11 @@ fn test_create_command() {
             min_value: None,
             name: "text".into(),
             name_localizations: None,
+            help: None,
             options: None,
             required: Some(true),
         },
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(true),
             channel_types: None,
             choices: None,
@@ -113,10 +119,11 @@ fn test_create_command() {
             min_value: None,
             name: "number".into(),
             name_localizations: None,
+            help: None,
             options: None,
             required: Some(true),
         },
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: Some(vec![ChannelType::GuildText, ChannelType::Private]),
             choices: None,
@@ -129,10 +136,11 @@ fn test_create_command() {
             min_value: None,
             name: "channel".into(),
             name_localizations: None,
+            help: None,
             options: None,
             required: Some(false),
         },
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -145,10 +153,11 @@ fn test_create_command() {
             min_value: None,
             name: "generic".into(),
             name_localizations: None,
+            help: None,
             options: None,
             required: Some(false),
         },
-        CommandOption {
+        CommandOptionExtended {
             autocomplete: Some(false),
             channel_types: None,
             choices: None,
@@ -161,6 +170,7 @@ fn test_create_command() {
             min_value: None,
             name: "cow".into(),
             name_localizations: None,
+            help: None,
             options: None,
             required: Some(false),
         },
@@ -174,6 +184,7 @@ fn test_create_command() {
         name_localizations: Some(name_localizations),
         description: "Demo command for testing purposes".into(),
         description_localizations: None,
+        help: None,
         options,
         default_member_permissions: Some(Permissions::SEND_MESSAGES),
         dm_permission: Some(false),
@@ -198,6 +209,7 @@ fn test_unit_create_command() {
         name_localizations: None,
         description: "Unit command for testing purposes".into(),
         description_localizations: None,
+        help: Some("Unit command help"),
         options: vec![],
         default_member_permissions: None,
         dm_permission: None,
