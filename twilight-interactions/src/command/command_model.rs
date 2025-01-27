@@ -531,6 +531,16 @@ impl CommandOption for f64 {
     }
 }
 
+impl CommandOption for f32 {
+    fn from_option(
+        value: CommandOptionValue,
+        data: CommandOptionData,
+        resolved: Option<&InteractionDataResolved>,
+    ) -> Result<Self, ParseOptionErrorType> {
+        f64::from_option(value, data, resolved).map(|double| double as f32)
+    }
+}
+
 impl CommandOption for bool {
     fn from_option(
         value: CommandOptionValue,
@@ -722,3 +732,22 @@ impl CommandOption for Role {
         lookup!(resolved.roles, role_id)
     }
 }
+
+macro_rules! impl_for_int {
+    ( $( $ty:ty ),* ) => {
+        $(
+            impl CommandOption for $ty {
+                fn from_option(
+                    value: CommandOptionValue,
+                    data: CommandOptionData,
+                    resolved: Option<&InteractionDataResolved>,
+                ) -> Result<Self, ParseOptionErrorType> {
+                    i64::from_option(value, data, resolved).map(|int| int as $ty)
+                }
+            }
+        )*
+    }
+}
+
+// User must be wary of over-/underflows
+impl_for_int!(u8, u16, u32, u64, usize, i8, i16, i32, isize);

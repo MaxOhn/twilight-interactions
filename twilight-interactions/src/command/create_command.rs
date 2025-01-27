@@ -472,18 +472,6 @@ impl CreateOption for Cow<'_, str> {
     }
 }
 
-impl CreateOption for i64 {
-    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
-        data.into_option(CommandOptionType::Integer)
-    }
-}
-
-impl CreateOption for f64 {
-    fn create_option(data: CreateOptionData) -> CommandOptionExtended {
-        data.into_option(CommandOptionType::Number)
-    }
-}
-
 impl CreateOption for bool {
     fn create_option(data: CreateOptionData) -> CommandOptionExtended {
         data.into_option(CommandOptionType::Boolean)
@@ -555,3 +543,31 @@ impl CreateOption for Role {
         data.into_option(CommandOptionType::Role)
     }
 }
+
+macro_rules! impl_for_int {
+    ( $( $ty:ty ),* ) => {
+        $(
+            impl CreateOption for $ty {
+                fn create_option(data: CreateOptionData) -> CommandOptionExtended {
+                    data.into_option(CommandOptionType::Integer)
+                }
+            }
+        )*
+    }
+}
+
+impl_for_int!(u8, u16, u32, u64, usize, i8, i16, i32, i64, isize);
+
+macro_rules! impl_for_float {
+    ( $( $ty:ty ),* ) => {
+        $(
+            impl CreateOption for $ty {
+                fn create_option(data: CreateOptionData) -> CommandOptionExtended {
+                    data.into_option(CommandOptionType::Number)
+                }
+            }
+        )*
+    }
+}
+
+impl_for_float!(f32, f64);
