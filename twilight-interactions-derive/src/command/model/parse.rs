@@ -2,7 +2,10 @@
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{spanned::Spanned, Attribute, Error, Lit, Result, Type};
+use syn::{
+    spanned::Spanned, Attribute, Error, Expr, ExprAssign, ExprLit, ExprPath, ExprUnary, Lit,
+    Result, Type, UnOp,
+};
 
 use crate::{
     command::user_application::{ApplicationIntegrationType, InteractionContextType},
@@ -235,7 +238,7 @@ pub enum ChannelType {
 }
 
 impl ParseAttribute for Vec<ChannelType> {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
 
         spanned
@@ -272,21 +275,87 @@ impl ChannelType {
 }
 
 /// Parsed command option value
-#[derive(Clone, Copy)]
-pub enum CommandOptionValue {
-    Integer(i64),
-    Number(f64),
+#[derive(Clone)]
+pub struct CommandOptionValue {
+    expr: Expr,
+    kind: CommandOptionValueKind,
+}
+
+#[derive(Copy, Clone)]
+enum CommandOptionValueKind {
+    Integer,
+    Number,
 }
 
 impl ParseAttribute for CommandOptionValue {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         match input {
-            Lit::Int(inner) => Ok(Self::Integer(inner.base10_parse()?)),
-            Lit::Float(inner) => Ok(Self::Number(inner.base10_parse()?)),
-            _ => Err(Error::new_spanned(
-                input,
-                "expected integer or floating point literal",
-            )),
+            Expr::Lit(ExprLit {
+                lit: Lit::Int(_), ..
+            }) => Ok(Self {
+                expr: input,
+                kind: CommandOptionValueKind::Integer,
+            }),
+            Expr::Lit(ExprLit {
+                lit: Lit::Float(_), ..
+            }) => Ok(Self {
+                expr: input,
+                kind: CommandOptionValueKind::Number,
+            }),
+            Expr::Unary(ExprUnary {
+                op: UnOp::Neg(_),
+                expr,
+                ..
+            }) => match *expr {
+                Expr::Lit(ExprLit {
+                    lit: Lit::Int(_), ..
+                }) => Ok(Self {
+                    expr: *expr,
+                    kind: CommandOptionValueKind::Integer,
+                }),
+                Expr::Lit(ExprLit {
+                    lit: Lit::Float(_), ..
+                }) => Ok(Self {
+                    expr: *expr,
+                    kind: CommandOptionValueKind::Number,
+                }),
+                _ => {
+                    let err = "expected integer or floating point literal";
+
+                    Err(Error::new_spanned(expr, err))
+                }
+            },
+            // Little hack in case we want to do e.g. `#[command(min_value = CONST_NAME)]` which
+            // won't work because parsing doesn't know whether the const is an integer or a float.
+            // So instead, we'll allow `#[command(min_value = CONST_NAME = i32)]`
+            Expr::Assign(ExprAssign { left, right, .. }) => {
+                let Expr::Path(ExprPath { path, .. }) = *right else {
+                    return Err(Error::new_spanned(right, "expected ident"));
+                };
+
+                let Some(ident) = path.get_ident() else {
+                    return Err(Error::new_spanned(path, "expected ident"));
+                };
+
+                let ident_str = ident.to_string();
+
+                let kind = match ident_str.as_str() {
+                    "u8" | "u16" | "u32" | "u64" | "usize" | "i8" | "i16" | "i32" | "i64"
+                    | "isize" => CommandOptionValueKind::Integer,
+                    "f32" | "f64" => CommandOptionValueKind::Number,
+                    _ => return Err(Error::new_spanned(
+                        ident,
+                        "expected integer or floating point type, e.g. `i32`, `usize`, `f64`, ...",
+                    )),
+                };
+
+                Ok(Self { expr: *left, kind })
+            }
+            _ => {
+                let err = "expected integer or floating point literal";
+
+                Err(Error::new_spanned(input, err))
+            }
         }
     }
 }
@@ -324,14 +393,20 @@ pub fn channel_type(kind: &ChannelType) -> TokenStream {
 }
 
 /// Convert a [`Option<CommandOptionValue>`] into a [`TokenStream`]
-pub fn command_option_value(value: Option<CommandOptionValue>) -> TokenStream {
+pub fn command_option_value(value: Option<&CommandOptionValue>) -> TokenStream {
     match value {
         None => quote!(::std::option::Option::None),
-        Some(CommandOptionValue::Integer(inner)) => {
-            quote!(::std::option::Option::Some(::twilight_model::application::command::CommandOptionValue::Integer(#inner)))
+        Some(CommandOptionValue {
+            expr,
+            kind: CommandOptionValueKind::Integer,
+        }) => {
+            quote!(::std::option::Option::Some(::twilight_model::application::command::CommandOptionValue::Integer(#expr as i64)))
         }
-        Some(CommandOptionValue::Number(inner)) => {
-            quote!(::std::option::Option::Some(::twilight_model::application::command::CommandOptionValue::Number(#inner)))
+        Some(CommandOptionValue {
+            expr,
+            kind: CommandOptionValueKind::Number,
+        }) => {
+            quote!(::std::option::Option::Some(::twilight_model::application::command::CommandOptionValue::Number(#expr as f64)))
         }
     }
 }

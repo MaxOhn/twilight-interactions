@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{Error, Lit, Path, Result};
+use syn::{spanned::Spanned, Error, Expr, ExprLit, Lit, Path, Result};
 
 use super::attribute::{ParseAttribute, ParseSpanned};
 
@@ -9,8 +9,11 @@ use super::attribute::{ParseAttribute, ParseSpanned};
 pub struct FunctionPath(Path);
 
 impl ParseAttribute for FunctionPath {
-    fn parse_attribute(input: Lit) -> Result<Self> {
-        let Lit::Str(lit) = input else {
+    fn parse_attribute(input: Expr) -> Result<Self> {
+        let Expr::Lit(ExprLit {
+            lit: Lit::Str(lit), ..
+        }) = input
+        else {
             return Err(Error::new_spanned(input, "expected string literal"));
         };
 
@@ -38,7 +41,7 @@ impl ToTokens for FunctionPath {
 pub struct CommandName(String);
 
 impl ParseAttribute for CommandName {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
         let value = spanned.inner.trim();
 
@@ -80,19 +83,23 @@ impl From<CommandName> for String {
 /// Slash command or command option help.
 ///
 /// This validate that the help is between 1 and `N` characters.
-pub struct CommandHelp<const N: usize>(String);
+pub struct CommandHelp<const N: usize>(Expr);
 
 impl<const N: usize> ParseAttribute for CommandHelp<N> {
-    fn parse_attribute(input: Lit) -> Result<Self> {
-        let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
-        let value = spanned.inner.trim();
+    fn parse_attribute(input: Expr) -> Result<Self> {
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Str(ref lit),
+            ..
+        }) = input
+        {
+            if !(1..=N).contains(&lit.value().chars().count()) {
+                let err = format!("help must be between 1 and {N} characters");
 
-        match value.chars().count() {
-            n if (1..=N).contains(&n) => (),
-            _ => return Err(spanned.error(format!("help must be between 1 and {N} characters"))),
+                return Err(Error::new(input.span(), err));
+            }
         }
 
-        Ok(Self(value.to_owned()))
+        Ok(Self(input))
     }
 }
 
@@ -105,32 +112,30 @@ impl<const N: usize> ToTokens for CommandHelp<N> {
 /// Slash command or command option description.
 ///
 /// This validate that the description is between 1 and 100 characters.
-#[derive(Clone, Debug)]
-pub struct CommandDescription(String);
+#[derive(Clone)]
+pub struct CommandDescription(Expr);
 
 impl ParseAttribute for CommandDescription {
-    fn parse_attribute(input: Lit) -> Result<Self> {
-        let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
-        let value = spanned.inner.trim();
+    fn parse_attribute(input: Expr) -> Result<Self> {
+        if let Expr::Lit(ExprLit {
+            lit: Lit::Str(ref lit),
+            ..
+        }) = input
+        {
+            if !(1..=100).contains(&lit.value().chars().count()) {
+                let err = "description must be between 1 and 100 characters";
 
-        match value.chars().count() {
-            1..=100 => (),
-            _ => return Err(spanned.error("description must be between 1 and 100 characters")),
+                return Err(Error::new(input.span(), err));
+            }
         }
 
-        Ok(Self(value.to_owned()))
+        Ok(Self(input))
     }
 }
 
 impl ToTokens for CommandDescription {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.0.to_tokens(tokens)
-    }
-}
-
-impl From<CommandDescription> for String {
-    fn from(value: CommandDescription) -> Self {
-        value.0
     }
 }
 
@@ -142,7 +147,7 @@ impl From<CommandDescription> for String {
 pub struct ChoiceName(String);
 
 impl ParseAttribute for ChoiceName {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
         let value = spanned.inner.trim();
 

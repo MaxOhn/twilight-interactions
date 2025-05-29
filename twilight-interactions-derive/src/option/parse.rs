@@ -1,5 +1,5 @@
 use proc_macro2::{Ident, Span};
-use syn::{spanned::Spanned, Attribute, Error, Fields, Lit, Result, Variant};
+use syn::{spanned::Spanned, Attribute, Error, Expr, ExprLit, Fields, Lit, Result, Variant};
 
 use crate::parse::{
     attribute::{NamedAttrs, ParseAttribute, ParseSpanned},
@@ -132,16 +132,25 @@ impl ChoiceValue {
 }
 
 impl ParseAttribute for ChoiceValue {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         let parsed = match input {
-            Lit::Str(inner) => Self::String(inner.value()),
-            Lit::Int(inner) => Self::Int(inner.base10_parse()?),
-            Lit::Float(inner) => Self::Number(inner.base10_parse()?),
+            Expr::Lit(ExprLit {
+                lit: Lit::Str(inner),
+                ..
+            }) => Self::String(inner.value()),
+            Expr::Lit(ExprLit {
+                lit: Lit::Int(inner),
+                ..
+            }) => Self::Int(inner.base10_parse()?),
+            Expr::Lit(ExprLit {
+                lit: Lit::Float(inner),
+                ..
+            }) => Self::Number(inner.base10_parse()?),
+            Expr::Group(inner) => return Self::parse_attribute(*inner.expr),
             _ => {
-                return Err(Error::new_spanned(
-                    input,
-                    "expected string, integer or float point literal",
-                ))
+                let err = "expected string, integer or float point literal";
+
+                return Err(Error::new_spanned(input, err));
             }
         };
 

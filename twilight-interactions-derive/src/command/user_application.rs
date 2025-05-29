@@ -2,7 +2,7 @@
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Error, Lit, Result};
+use syn::{Error, Expr, Result};
 
 use crate::parse::attribute::{ParseAttribute, ParseSpanned};
 
@@ -14,7 +14,7 @@ pub enum InteractionContextType {
 }
 
 impl ParseAttribute for Vec<InteractionContextType> {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
 
         spanned
@@ -46,7 +46,7 @@ pub enum ApplicationIntegrationType {
 }
 
 impl ParseAttribute for Vec<ApplicationIntegrationType> {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         let spanned: ParseSpanned<String> = ParseAttribute::parse_attribute(input)?;
 
         spanned

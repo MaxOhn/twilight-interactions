@@ -9,15 +9,14 @@
 use std::fmt::Display;
 
 use proc_macro2::{Ident, Span};
-use syn::{meta::ParseNestedMeta, spanned::Spanned, Attribute, Error, Lit, Result};
+use syn::{meta::ParseNestedMeta, spanned::Spanned, Attribute, Error, Expr, ExprLit, Lit, Result};
 
 /// Parse a list of named attributes like `#[command(rename = "name")]`.
 ///
-/// This only support `(ident) = (literal)` syntax for simplicity. Collected
-/// values can be parsed using the `optional` and `required` methods.
+/// Collected values can be parsed using the `optional` and `required` methods.
 pub struct NamedAttrs {
     attr_span: Span,
-    values: Vec<(Ident, Lit)>,
+    values: Vec<(Ident, Expr)>,
 }
 
 impl NamedAttrs {
@@ -46,8 +45,8 @@ impl NamedAttrs {
             ));
         };
 
-        let lit: Lit = meta.value()?.parse()?;
-        self.values.push((ident.clone(), lit));
+        let expr = meta.value()?.parse()?;
+        self.values.push((ident.clone(), expr));
 
         Ok(())
     }
@@ -58,8 +57,8 @@ impl NamedAttrs {
             return Ok(None);
         };
 
-        let (_, lit) = self.values.remove(index);
-        let parsed = T::parse_attribute(lit)?;
+        let (_, expr) = self.values.remove(index);
+        let parsed = T::parse_attribute(expr)?;
 
         Ok(Some(parsed))
     }
@@ -81,13 +80,20 @@ impl NamedAttrs {
 
 /// Parse an attribute literal into a concrete type.
 pub trait ParseAttribute: Sized {
-    fn parse_attribute(input: Lit) -> Result<Self>;
+    fn parse_attribute(input: Expr) -> Result<Self>;
 }
 
 impl ParseAttribute for String {
-    fn parse_attribute(input: Lit) -> Result<Self> {
-        let Lit::Str(lit) = input else {
-            return Err(Error::new_spanned(input, "expected string literal"));
+    fn parse_attribute(input: Expr) -> Result<Self> {
+        let lit = match input {
+            Expr::Lit(ExprLit {
+                lit: Lit::Str(lit), ..
+            }) => lit,
+            // Required e.g. when doing `#[option(name = $macro_arg)]` within a macro
+            Expr::Group(inner) => return Self::parse_attribute(*inner.expr),
+            _ => {
+                return Err(Error::new_spanned(input, "expected string literal"));
+            }
         };
 
         Ok(lit.value())
@@ -95,8 +101,12 @@ impl ParseAttribute for String {
 }
 
 impl ParseAttribute for bool {
-    fn parse_attribute(input: Lit) -> Result<Self> {
-        let Lit::Bool(lit) = input else {
+    fn parse_attribute(input: Expr) -> Result<Self> {
+        let Expr::Lit(ExprLit {
+            lit: Lit::Bool(lit),
+            ..
+        }) = input
+        else {
             return Err(Error::new_spanned(input, "expected boolean literal"));
         };
 
@@ -105,8 +115,11 @@ impl ParseAttribute for bool {
 }
 
 impl ParseAttribute for u16 {
-    fn parse_attribute(input: Lit) -> Result<Self> {
-        let Lit::Int(lit) = input else {
+    fn parse_attribute(input: Expr) -> Result<Self> {
+        let Expr::Lit(ExprLit {
+            lit: Lit::Int(lit), ..
+        }) = input
+        else {
             return Err(Error::new_spanned(input, "expected integer literal"));
         };
 
@@ -127,7 +140,7 @@ impl<T> ParseSpanned<T> {
 }
 
 impl<T: ParseAttribute> ParseAttribute for ParseSpanned<T> {
-    fn parse_attribute(input: Lit) -> Result<Self> {
+    fn parse_attribute(input: Expr) -> Result<Self> {
         let span = input.span();
         let inner = T::parse_attribute(input)?;
 

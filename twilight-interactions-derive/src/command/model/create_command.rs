@@ -123,8 +123,8 @@ fn field_option(field: &StructField) -> Result<TokenStream> {
 
     let required = field.kind.required();
     let autocomplete = field.attributes.autocomplete;
-    let max_value = command_option_value(field.attributes.max_value);
-    let min_value = command_option_value(field.attributes.min_value);
+    let max_value = command_option_value(field.attributes.max_value.as_ref());
+    let min_value = command_option_value(field.attributes.min_value.as_ref());
     let max_length = optional(field.attributes.max_length);
     let min_length = optional(field.attributes.min_length);
     let help = optional(field.attributes.help.as_ref());

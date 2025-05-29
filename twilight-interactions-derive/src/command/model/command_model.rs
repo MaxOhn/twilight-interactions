@@ -78,8 +78,8 @@ fn field_match_arm(field: &StructField) -> TokenStream {
     let span = field.span;
 
     let name = field.attributes.name_default(ident.to_string());
-    let max_value = command_option_value(field.attributes.max_value);
-    let min_value = command_option_value(field.attributes.min_value);
+    let max_value = command_option_value(field.attributes.max_value.as_ref());
+    let min_value = command_option_value(field.attributes.min_value.as_ref());
     let max_length = optional(field.attributes.max_length);
     let min_length = optional(field.attributes.min_length);
 
